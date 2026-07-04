@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Geist_Mono, DM_Sans, Roboto } from "next/font/google"
 import { cn } from "@/lib/utils"
+import { AuthProvider } from "@/features/auth/components/auth-provider"
 import "./globals.css"
 
 const dmSans = DM_Sans({
@@ -41,7 +42,9 @@ export default function RootLayout({
         geistMono.variable
       )}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   )
 }
