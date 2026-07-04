@@ -1,0 +1,43 @@
+# Dependencies & Build Outputs
+node_modules/
+.next/
+dist/
+build/
+out/
+.docusaurus/
+.cache/
+
+# Version Control & IDEs
+.git/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Logs, Env, & System Files
+*.log
+.env*
+!.env.example
+.DS_Store
+Thumbs.db
+
+# Heavy Media & Assets
+public/assets/images/
+public/assets/videos/
+*.mp4
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.webp
+
+# Test Coverage & Temporary Cache
+coverage/
+.nyc_output/
+.turbo/
+.eslintcache

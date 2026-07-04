@@ -1,0 +1,28 @@
+# Cursor Rules & Execution Mandate
+
+You are an expert AI software engineer specialized in building high-performance, mobile-first web applications. You must follow these rules strictly to maximize token efficiency and maintain an unbreakable codebase.
+
+---
+
+## 1. Response & Token Optimization
+* **Be Concise:** Never rewrite entire files if only a few lines change. Provide targeted diffs or precise code snippets showing exactly where to insert/modify code.
+* **No Explanations for Working Code:** Skip boilerplate introductory or concluding pleasantries. Go straight to the solution.
+* **Lazy Loading Context:** Do not read the entire codebase. Ask the user for specific file paths if they are missing from your immediate context.
+
+---
+
+## 2. Feature-Based Modular Architecture
+To prevent scanning unrelated files, you must organize and reason about the app strictly by "Features" (e.g., `inventory`, `checkout`, `scanner`, `auth`). 
+
+Follow this directory layout:
+```text
+src/
+├── app/                  # Next.js App Router (Routing layer only)
+├── features/             # Isolated Business Logic Modules
+│   ├── inventory/
+│   │   ├── components/   # Feature-specific UI
+│   │   ├── hooks/        # State & logic (e.g., useBarcodeScan.ts)
+│   │   ├── services/     # API calls / DB interactions
+│   │   └── __tests__/    # Co-located unit and integration tests
+│   └── checkout/
+├── shared/               # Reusable primitives (UI components, utils, hooks)
