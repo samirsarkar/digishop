@@ -1,3 +1,4 @@
+import Link from "next/link"
 import {
   BarChart3,
   Camera,
@@ -14,7 +15,7 @@ import {
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -23,6 +24,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { AuthHeaderControls } from "@/features/auth/components/auth-header-controls"
+import { AUTH_ROUTES } from "@/features/auth/constants"
+import { cn } from "@/lib/utils"
 
 const pillars = [
   {
@@ -112,7 +116,7 @@ export function LandingPage() {
               Checkout
             </a>
           </nav>
-          <Button size="sm">Get Started</Button>
+          <AuthHeaderControls />
         </div>
       </header>
 
@@ -134,12 +138,21 @@ export function LandingPage() {
                 lightning-fast storefront — no app store download required.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Button size="lg" className="w-full sm:w-auto">
+                <Link
+                  href={AUTH_ROUTES.signUp}
+                  className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
+                >
                   Start Free Trial
-                </Button>
-                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                </Link>
+                <Link
+                  href="#pillars"
+                  className={cn(
+                    buttonVariants({ size: "lg", variant: "outline" }),
+                    "w-full sm:w-auto"
+                  )}
+                >
                   See How It Works
-                </Button>
+                </Link>
               </div>
             </div>
 
@@ -348,20 +361,24 @@ export function LandingPage() {
                 staff, a seamless storefront for customers — all in one place.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="w-full sm:w-auto"
+                <Link
+                  href={AUTH_ROUTES.signUp}
+                  className={cn(
+                    buttonVariants({ size: "lg", variant: "secondary" }),
+                    "w-full sm:w-auto"
+                  )}
                 >
                   Create Your Shop
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 sm:w-auto"
+                </Link>
+                <Link
+                  href={AUTH_ROUTES.signIn}
+                  className={cn(
+                    buttonVariants({ size: "lg", variant: "outline" }),
+                    "w-full border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 sm:w-auto"
+                  )}
                 >
-                  Talk to Us
-                </Button>
+                  Sign In
+                </Link>
               </div>
             </CardContent>
           </Card>

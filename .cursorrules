@@ -8,11 +8,14 @@ You are an expert AI software engineer specialized in building high-performance,
 * **Be Concise:** Never rewrite entire files if only a few lines change. Provide targeted diffs or precise code snippets showing exactly where to insert/modify code.
 * **No Explanations for Working Code:** Skip boilerplate introductory or concluding pleasantries. Go straight to the solution.
 * **Lazy Loading Context:** Do not read the entire codebase. Ask the user for specific file paths if they are missing from your immediate context.
+* **File Map First:** Always consult `docs/FILEMAP.md` before searching or editing. Open only the paths listed for the task. After adding, moving, renaming, or deleting source files, update `docs/FILEMAP.md` in the same change.
 
 ---
 
 ## 2. Feature-Based Modular Architecture
 To prevent scanning unrelated files, you must organize and reason about the app strictly by "Features" (e.g., `inventory`, `checkout`, `scanner`, `auth`). 
+
+**Canonical index:** `docs/FILEMAP.md` — keep it current.
 
 Follow this directory layout:
 ```text
@@ -25,4 +28,6 @@ src/
 │   │   ├── services/     # API calls / DB interactions
 │   │   └── __tests__/    # Co-located unit and integration tests
 │   └── checkout/
-├── shared/               # Reusable primitives (UI components, utils, hooks)
+├── components/ui/        # shadcn/ui primitives (existing)
+├── shared/               # New cross-feature hooks/utils (prefer for new shared code)
+└── lib/                  # Low-level helpers (cn, db client)

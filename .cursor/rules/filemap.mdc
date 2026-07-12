@@ -1,0 +1,38 @@
+---
+description: Always consult and update docs/FILEMAP.md before touching files
+alwaysApply: true
+---
+
+# File Map First
+
+## Before any code change
+
+1. Read `docs/FILEMAP.md` (or the relevant section) **before** searching the repo.
+2. Open only paths listed for that feature/area.
+3. Do **not** glob or scan the whole codebase to decide which file to edit.
+
+## After any structural change
+
+In the **same** change set, update `docs/FILEMAP.md` when you:
+
+- add a new file or folder under `src/` or `docs/`
+- move, rename, or delete a mapped file
+- introduce a new feature module
+- add a new App Router page
+- add a new shared UI primitive or lib helper
+
+## Update checklist for FILEMAP
+
+- Add/remove the path in the correct section
+- Update the Quick decision table if a new entry point appears
+- Move items from "planned" → "exists" when created
+- Bump **Last updated** date
+- Add a one-line entry under **Change log**
+
+## Feature layout (required)
+
+```
+src/features/<name>/{components,hooks,services,__tests__}
+```
+
+App Router pages stay thin: import from features only.
