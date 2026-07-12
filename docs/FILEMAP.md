@@ -2,7 +2,7 @@
 
 > **Purpose:** Single index for agents and humans. Consult this before searching the repo.  
 > **Rule:** Update this file in the same change whenever you add, move, rename, or delete source files.  
-> **Last updated:** 2026-07-12
+> **Last updated:** 2026-07-12 (aligned PROJECT-PLAN layout)
 
 ---
 
@@ -196,3 +196,4 @@ src/features/<name>/
 |------|--------|
 | 2026-07-12 | Initial FILEMAP created from current codebase |
 | 2026-07-12 | Added `.cursor/rules/filemap.mdc`; linked from `.cursorrules` |
+| 2026-07-12 | Fixed `docs/PROJECT-PLAN.md` layout: `components/ui`, `shared`, `lib` are siblings (not nested under `shared/`) |

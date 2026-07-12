@@ -88,13 +88,19 @@ src/
 │   ├── payments/                # Razorpay integration
 │   └── analytics/               # Revenue, P&L, reports
 │
-├── shared/
-│   ├── components/ui/           # shadcn/ui components
-│   ├── hooks/                   # Generic reusable hooks
-│   └── lib/                     # utils, db client, validators
+├── components/ui/               # shadcn/ui primitives (existing)
+├── shared/                      # Cross-feature hooks/utils (new shared code)
+├── lib/                         # Low-level helpers (cn, db client)
 │
 └── proxy.ts                     # ✅ Clerk middleware (route protection)
 ```
+
+> **Placement rule (matches `.cursorrules` + `docs/FILEMAP.md`):**  
+> - UI primitives → `src/components/ui/`  
+> - Cross-feature hooks/utils → `src/shared/`  
+> - Low-level helpers → `src/lib/`  
+> Do **not** nest `components/ui` or `lib` under `shared/`.
+
 
 ### Rendering Strategy
 
