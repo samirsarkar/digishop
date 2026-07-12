@@ -53,7 +53,7 @@ DigiShop is a **mobile-first retail operating platform** for Indian small shop o
 | Clerk auth (`ClerkProvider`, sign-in/sign-up, middleware) | Done |
 | Protected `/dashboard` shell | Done |
 | Feature module: `auth/` | Done |
-| Database, inventory, POS, storefront, payments | Not started |
+| Database, inventory, POS, storefront, payments | Schema + API scaffold done; needs `DATABASE_URL` |
 
 ---
 
@@ -147,6 +147,7 @@ Database (Neon Postgres)
 
 ```
 shops          → id, ownerId (Clerk userId), name, slug, gst, address
+shop_contacts  → shopId, type (phone|email|whatsapp|website|instagram|facebook|other), value, label, isPrimary
 users          → clerkId, shopId, role (owner|manager|customer)
 products       → id, shopId, name, sku, barcode, price, costPrice, imageUrl
 inventory      → productId, shopId, quantity, lowStockThreshold
@@ -180,9 +181,10 @@ transactions   → orderId, razorpayOrderId, status, amount, paidAt
 ### Phase 0 — Foundation
 
 - [ ] `.env.local` with Clerk keys; verify sign-in/sign-up end-to-end
-- [ ] Neon database (free tier)
-- [ ] Drizzle ORM schema + first migration
-- [ ] Shop onboarding (new user → create shop → dashboard)
+- [ ] Neon database (free tier) — staging + production branches
+- [x] Drizzle ORM schema + db scripts (`pnpm db:push` / `db:migrate`)
+- [x] Shop onboarding (new user → create shop → dashboard)
+- [x] Core feature API scaffold (inventory, orders, POS, storefront, payments stub, analytics)
 
 ### Phase 1 — Inventory
 
@@ -480,25 +482,35 @@ Add **30–40%** for:
 ### Not started (by feature)
 
 ```
-⬜ shop/          — Shop profile, slug, settings
-⬜ inventory/     — Products, stock, scanner
-⬜ pos/           — In-store cart & checkout
-⬜ orders/        — Order lifecycle
-⬜ storefront/    — Public customer shop
-⬜ payments/      — Razorpay
-⬜ analytics/     — Charts, P&L
-⬜ Database       — Neon + Drizzle
+✅ shop/          — Shop profile, onboarding, CRUD APIs
+✅ inventory/     — Product + stock Server Actions (UI pending)
+✅ pos/           — Cash sale API (UI pending)
+✅ orders/        — Order lifecycle APIs (UI pending)
+✅ storefront/    — Public catalog API (page UI pending)
+✅ payments/      — Razorpay stub (gated on env)
+✅ analytics/     — Dashboard summary API
+✅ Database       — Neon + Drizzle schema (needs DATABASE_URL)
 ```
 
 ### Immediate next steps (when you resume coding)
 
-1. Create `.env.local` with `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`
-2. In Clerk Dashboard: enable phone **or** email (your choice)
-3. Provision Neon free database
-4. Add Drizzle schema for `shops` and `products`
-5. Build shop onboarding after first sign-up
+1. Create Neon staging + production branches; add staging `DATABASE_URL` to `.env.local`
+2. Run `pnpm db:push` against staging
+3. Sign up → complete shop onboarding → verify dashboard summary cards
+4. Smoke-test inventory/POS Server Actions and `GET /api/shop/[slug]/products`
+5. Wire Vercel Preview → staging DB, Production → production DB
 
 ---
+
+## Staging vs production (database)
+
+| Env | Neon branch | Where to set `DATABASE_URL` |
+|-----|-------------|------------------------------|
+| Local | staging | `.env.local` |
+| Vercel Preview | staging | Project → Settings → Environment Variables → Preview |
+| Vercel Production | production | Project → Settings → Environment Variables → Production |
+
+Always migrate/push **staging first**, verify onboarding + APIs, then apply the same schema to production.
 
 ## Appendix: Related Docs
 

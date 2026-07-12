@@ -10,4 +10,6 @@ export const PUBLIC_ROUTES = [
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/shop(.*)",
+  "/api/shop(.*)",
 ] as const
