@@ -8,6 +8,7 @@ const moneySchema = z
 export const createProductSchema = z.object({
   shopId: z.string().uuid(),
   name: z.string().trim().min(1).max(200),
+  category: z.string().trim().max(80).optional().or(z.literal("")),
   sku: z.string().trim().max(64).optional().or(z.literal("")),
   barcode: z.string().trim().max(64).optional().or(z.literal("")),
   price: moneySchema,
@@ -26,12 +27,28 @@ export const createProductSchema = z.object({
   lowStockThreshold: z.number().int().min(0).default(5),
 })
 
-export const updateProductSchema = createProductSchema
-  .omit({ shopId: true, quantity: true, lowStockThreshold: true })
-  .partial()
-  .extend({
-    productId: z.string().uuid(),
-  })
+export const updateProductFieldsSchema = z.object({
+  name: z.string().trim().min(1).max(200).optional(),
+  category: z.string().trim().max(80).optional().or(z.literal("")),
+  sku: z.string().trim().max(64).optional().or(z.literal("")),
+  barcode: z.string().trim().max(64).optional().or(z.literal("")),
+  price: moneySchema.optional(),
+  costPrice: moneySchema.optional(),
+  imageUrl: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (value) => !value || value === "" || URL.canParse(value),
+      "Invalid image URL"
+    ),
+  description: z.string().trim().max(2000).optional().or(z.literal("")),
+})
+
+export const updateProductSchema = updateProductFieldsSchema.extend({
+  productId: z.string().uuid(),
+})
 
 export const adjustStockSchema = z.object({
   productId: z.string().uuid(),
@@ -39,6 +56,14 @@ export const adjustStockSchema = z.object({
   lowStockThreshold: z.number().int().min(0).optional(),
 })
 
+export const listProductsPageSchema = z.object({
+  shopId: z.string().uuid(),
+  category: z.string().trim().max(80).optional().or(z.literal("")),
+  cursor: z.string().uuid().optional().nullable(),
+  limit: z.number().int().min(1).max(60).default(30),
+})
+
 export type CreateProductInput = z.infer<typeof createProductSchema>
 export type UpdateProductInput = z.infer<typeof updateProductSchema>
 export type AdjustStockInput = z.infer<typeof adjustStockSchema>
+export type ListProductsPageInput = z.infer<typeof listProductsPageSchema>

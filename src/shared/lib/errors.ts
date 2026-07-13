@@ -1,3 +1,5 @@
+import { appLogger } from "@/shared/lib/logger"
+
 export class AppError extends Error {
   readonly code: string
   readonly status: number
@@ -19,6 +21,8 @@ export function ok<T>(data: T): ActionSuccess<T> {
 }
 
 export function fail(error: unknown): ActionFailure {
+  appLogger.error("Action failed", error)
+
   if (error instanceof AppError) {
     return {
       ok: false,

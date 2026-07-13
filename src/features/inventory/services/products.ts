@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm"
+import { and, asc, eq, gt, sql } from "drizzle-orm"
 
 import { assertShopAccess } from "@/features/shop/services/shop"
 import { getDb } from "@/lib/db"
@@ -7,15 +7,22 @@ import { AppError } from "@/shared/lib/errors"
 import {
   adjustStockSchema,
   createProductSchema,
+  listProductsPageSchema,
   updateProductSchema,
   type AdjustStockInput,
   type CreateProductInput,
+  type ListProductsPageInput,
   type UpdateProductInput,
 } from "@/shared/lib/validators/inventory"
 
 export type ProductWithStock = Product & {
   quantity: number
   lowStockThreshold: number
+}
+
+export type ProductsPage = {
+  items: ProductWithStock[]
+  nextCursor: string | null
 }
 
 function emptyToNull(value?: string | null) {
@@ -25,6 +32,18 @@ function emptyToNull(value?: string | null) {
 
 function toMoneyString(value: number) {
   return value.toFixed(2)
+}
+
+function mapRow(row: {
+  product: Product
+  quantity: number | null
+  lowStockThreshold: number | null
+}): ProductWithStock {
+  return {
+    ...row.product,
+    quantity: row.quantity ?? 0,
+    lowStockThreshold: row.lowStockThreshold ?? 5,
+  }
 }
 
 export async function listProducts(
@@ -43,12 +62,65 @@ export async function listProducts(
     .from(products)
     .leftJoin(inventory, eq(inventory.productId, products.id))
     .where(eq(products.shopId, shopId))
+    .orderBy(asc(products.name))
 
-  return rows.map((row) => ({
-    ...row.product,
-    quantity: row.quantity ?? 0,
-    lowStockThreshold: row.lowStockThreshold ?? 5,
-  }))
+  return rows.map(mapRow)
+}
+
+export async function listProductsPage(
+  userId: string,
+  input: ListProductsPageInput
+): Promise<ProductsPage> {
+  const data = listProductsPageSchema.parse(input)
+  await assertShopAccess(userId, data.shopId)
+  const db = getDb()
+
+  const filters = [eq(products.shopId, data.shopId)]
+  if (data.category && data.category.trim() !== "") {
+    filters.push(eq(products.category, data.category.trim()))
+  }
+  if (data.cursor) {
+    filters.push(gt(products.id, data.cursor))
+  }
+
+  const rows = await db
+    .select({
+      product: products,
+      quantity: inventory.quantity,
+      lowStockThreshold: inventory.lowStockThreshold,
+    })
+    .from(products)
+    .leftJoin(inventory, eq(inventory.productId, products.id))
+    .where(and(...filters))
+    .orderBy(asc(products.id))
+    .limit(data.limit + 1)
+
+  const hasMore = rows.length > data.limit
+  const pageRows = hasMore ? rows.slice(0, data.limit) : rows
+  const items = pageRows.map(mapRow)
+  const nextCursor = hasMore ? (items[items.length - 1]?.id ?? null) : null
+
+  return { items, nextCursor }
+}
+
+export async function listProductCategories(
+  userId: string,
+  shopId: string
+): Promise<string[]> {
+  await assertShopAccess(userId, shopId)
+  const db = getDb()
+
+  const rows = await db
+    .selectDistinct({ category: products.category })
+    .from(products)
+    .where(
+      and(eq(products.shopId, shopId), sql`${products.category} is not null`)
+    )
+    .orderBy(asc(products.category))
+
+  return rows
+    .map((row) => row.category)
+    .filter((value): value is string => Boolean(value && value.trim()))
 }
 
 export async function listProductsByShopSlug(
@@ -67,11 +139,7 @@ export async function listProductsByShopSlug(
     .leftJoin(inventory, eq(inventory.productId, products.id))
     .where(and(eq(shops.slug, slug), sql`coalesce(${inventory.quantity}, 0) > 0`))
 
-  return rows.map((row) => ({
-    ...row.product,
-    quantity: row.quantity ?? 0,
-    lowStockThreshold: row.lowStockThreshold ?? 5,
-  }))
+  return rows.map(mapRow)
 }
 
 export async function createProduct(
@@ -87,6 +155,7 @@ export async function createProduct(
     .values({
       shopId: data.shopId,
       name: data.name,
+      category: emptyToNull(data.category),
       sku: emptyToNull(data.sku),
       barcode: emptyToNull(data.barcode),
       price: toMoneyString(data.price),
@@ -141,6 +210,9 @@ export async function updateProduct(
     .update(products)
     .set({
       ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.category !== undefined
+        ? { category: emptyToNull(data.category) }
+        : {}),
       ...(data.sku !== undefined ? { sku: emptyToNull(data.sku) } : {}),
       ...(data.barcode !== undefined
         ? { barcode: emptyToNull(data.barcode) }

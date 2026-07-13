@@ -2,7 +2,7 @@
 
 > **Purpose:** Single index for agents and humans. Consult this before searching the repo.  
 > **Rule:** Update this file in the same change whenever you add, move, rename, or delete source files.  
-> **Last updated:** 2026-07-12 (shop_contacts)
+> **Last updated:** 2026-07-13 (products grid + barcodes)
 
 ---
 
@@ -22,7 +22,7 @@
 | Auth / Clerk / routes / session | `src/features/auth/` + `src/proxy.ts` |
 | Landing / marketing copy | `src/features/marketing/` |
 | Shop onboarding / profile | `src/features/shop/` |
-| Products / stock APIs | `src/features/inventory/` |
+| Products / stock APIs + UI | `src/features/inventory/` + `/dashboard/inventory` |
 | Orders APIs | `src/features/orders/` |
 | In-store cash sale | `src/features/pos/` |
 | Public catalog API | `src/features/storefront/` + `src/app/api/shop/` |
@@ -83,16 +83,18 @@
 | `src/app/sign-up/[[...sign-up]]/page.tsx` | `/sign-up` | `features/auth` SignUpView |
 | `src/app/dashboard/page.tsx` | `/dashboard` (protected) | `auth`, `shop`, `analytics` |
 | `src/app/dashboard/onboarding/page.tsx` | `/dashboard/onboarding` | `features/shop` |
+| `src/app/dashboard/inventory/page.tsx` | `/dashboard/inventory` products grid | `inventory`, `shop` |
+| `src/app/dashboard/inventory/new/page.tsx` | Add product form | `inventory`, `shop` |
+| `src/app/dashboard/inventory/barcodes/page.tsx` | Printable barcode labels | `inventory`, `shop` |
 | `src/app/api/shop/[slug]/products/route.ts` | Public catalog JSON | `features/storefront` |
 
 ### Planned routes (not created yet)
 
 | Path | Role |
 |------|------|
-| `src/app/dashboard/inventory/` | Inventory management UI |
 | `src/app/dashboard/pos/` | In-store POS UI |
 | `src/app/dashboard/orders/` | Order management UI |
-| `src/app/dashboard/analytics/` | Analytics / P&L UI |
+| `src/app/dashboard/analytics/` | Dedicated analytics / P&L UI (overview lives on dashboard) |
 | `src/app/shop/[shopSlug]/` | Public customer storefront page |
 | `src/app/shop/[shopSlug]/checkout/` | Customer checkout |
 
@@ -102,7 +104,7 @@
 
 | Path | Role |
 |------|------|
-| `src/proxy.ts` | Clerk middleware; public vs protected routes via `PUBLIC_ROUTES` |
+| `src/proxy.ts` | Clerk middleware; public routes; signed-in users redirected off `/sign-in` & `/sign-up` |
 
 ---
 
@@ -114,6 +116,7 @@ src/features/auth/
 ├── types.ts
 ├── components/
 │   ├── auth-provider.tsx
+│   ├── auth-cta-link.tsx
 │   ├── auth-header-controls.tsx
 │   ├── sign-in-view.tsx
 │   └── sign-up-view.tsx
@@ -127,6 +130,7 @@ src/features/auth/
 |------|------|
 | `constants.ts` | `AUTH_ROUTES`, `PUBLIC_ROUTES` (includes `/shop`, `/api/shop`) |
 | `types.ts` | `UserRole`, `AuthSession` |
+| `components/auth-cta-link.tsx` | Landing CTAs: sign-up vs dashboard by session |
 | `components/auth-provider.tsx` | `ClerkProvider` + shadcn theme |
 | `components/auth-header-controls.tsx` | Header sign-in/up / UserButton |
 | `components/sign-in-view.tsx` | Clerk `<SignIn />` wrapper |
@@ -151,7 +155,8 @@ src/features/shop/
 ├── constants.ts
 ├── types.ts
 ├── components/
-│   └── onboarding-form.tsx
+│   ├── onboarding-form.tsx
+│   └── merchant-shell.tsx
 └── services/
     ├── shop.ts
     ├── contacts.ts
@@ -160,12 +165,13 @@ src/features/shop/
 
 | Path | Role |
 |------|------|
-| `constants.ts` | Onboarding/dashboard routes, `slugifyShopName` |
+| `constants.ts` | Dashboard/onboarding/inventory routes, `slugifyShopName` |
 | `types.ts` | `ShopProfile`, `ShopRole`, `ShopContactProfile` |
 | `services/shop.ts` | get/create/update shop, access checks |
 | `services/contacts.ts` | list/add/update/delete shop contacts |
 | `services/actions.ts` | Shop + contact Server Actions |
 | `components/onboarding-form.tsx` | Client onboarding form (incl. phone/email) |
+| `components/merchant-shell.tsx` | Shared merchant header + nav |
 
 ---
 
@@ -174,6 +180,11 @@ src/features/shop/
 ```
 src/features/inventory/
 ├── types.ts
+├── components/
+│   ├── products-catalog.tsx
+│   ├── product-form.tsx
+│   ├── barcode-scanner-button.tsx
+│   └── barcode-print-section.tsx
 └── services/
     ├── products.ts
     └── actions.ts
@@ -181,8 +192,12 @@ src/features/inventory/
 
 | Path | Role |
 |------|------|
-| `services/products.ts` | list/create/update/delete products, adjustStock, public list by slug |
-| `services/actions.ts` | Server Actions for product CRUD + stock |
+| `services/products.ts` | CRUD, paginated list, categories, public list by slug |
+| `services/actions.ts` | Server Actions for products + pagination |
+| `components/products-catalog.tsx` | Grid + category filters + infinite scroll |
+| `components/product-form.tsx` | Add product (SKU generate/copy, category) |
+| `components/barcode-scanner-button.tsx` | Camera barcode scan (ZXing) |
+| `components/barcode-print-section.tsx` | Select + print Code128 labels |
 | `types.ts` | Re-exports `ProductWithStock` |
 
 ---
@@ -255,6 +270,8 @@ src/features/payments/
 
 ```
 src/features/analytics/
+├── components/
+│   └── dashboard-overview.tsx
 └── services/
     ├── summary.ts
     └── actions.ts
@@ -262,8 +279,9 @@ src/features/analytics/
 
 | Path | Role |
 |------|------|
-| `services/summary.ts` | `getShopSummary` (products, low stock, today revenue) |
+| `services/summary.ts` | `getShopSummary` (metrics, low stock, 7-day revenue, recent orders) |
 | `services/actions.ts` | `getShopSummaryAction` |
+| `components/dashboard-overview.tsx` | Merchant overview UI with charts + lists |
 
 ---
 
@@ -278,7 +296,9 @@ src/features/analytics/
 | `src/lib/utils.ts` | `cn()` helper |
 | `src/lib/db.ts` | Neon HTTP + Drizzle client (`getDb`) |
 | `src/lib/db/schema.ts` | Full core Postgres schema (incl. `shop_contacts`) |
+| `src/shared/lib/money.ts` | `formatInr()` Indian Rupee helper |
 | `src/shared/lib/errors.ts` | `AppError`, `ActionResult`, `toActionResult` |
+| `src/shared/lib/logger.ts` | Structured `appLogger` (console now; Sentry/AI later) |
 | `src/shared/lib/validators/shop.ts` | Shop + contact zod schemas |
 | `src/shared/lib/validators/inventory.ts` | Product/stock zod schemas |
 | `src/shared/lib/validators/orders.ts` | Order / cash-sale zod schemas |
@@ -305,3 +325,8 @@ src/features/analytics/
 | 2026-07-12 | Fixed `docs/PROJECT-PLAN.md` layout: `components/ui`, `shared`, `lib` are siblings (not nested under `shared/`) |
 | 2026-07-12 | Phase 0: Drizzle/Neon, shop onboarding, inventory/orders/pos/storefront/payments/analytics APIs |
 | 2026-07-12 | Added `shop_contacts` table + contact CRUD APIs; onboarding phone/email |
+| 2026-07-13 | Landing CTAs use session-aware AuthCtaLink (signed-in → dashboard) |
+| 2026-07-13 | Middleware redirects signed-in users away from auth pages; Clerk forceRedirectUrl |
+| 2026-07-13 | Inventory UI + real dashboard analytics (7-day revenue, low stock, recent orders) |
+| 2026-07-13 | Fix Zod `.partial()` crash; always-visible auth CTAs; appLogger |
+| 2026-07-13 | Products grid, categories, infinite scroll, barcode scan/print, INR helper |

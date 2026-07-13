@@ -20,36 +20,42 @@ export const contactTypeSchema = z.enum([
   "other",
 ])
 
-export const shopContactSchema = z
-  .object({
-    type: contactTypeSchema,
-    value: z.string().trim().min(1).max(255),
-    label: z.string().trim().max(64).optional().or(z.literal("")),
-    isPrimary: z.boolean().optional().default(false),
-  })
-  .superRefine((contact, ctx) => {
-    if (contact.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.value)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Enter a valid email address",
-        path: ["value"],
-      })
-    }
+/** Base fields only — no refinements, so `.partial()` / `.extend()` stay valid in Zod 4. */
+export const shopContactFieldsSchema = z.object({
+  type: contactTypeSchema,
+  value: z.string().trim().min(1).max(255),
+  label: z.string().trim().max(64).optional().or(z.literal("")),
+  isPrimary: z.boolean().optional().default(false),
+})
 
-    if (
-      (contact.type === "website" ||
-        contact.type === "instagram" ||
-        contact.type === "facebook") &&
-      !URL.canParse(contact.value) &&
-      !contact.value.startsWith("@")
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Enter a valid URL or @handle",
-        path: ["value"],
-      })
-    }
-  })
+function refineShopContact(
+  contact: { type: z.infer<typeof contactTypeSchema>; value: string },
+  ctx: z.RefinementCtx
+) {
+  if (contact.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.value)) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Enter a valid email address",
+      path: ["value"],
+    })
+  }
+
+  if (
+    (contact.type === "website" ||
+      contact.type === "instagram" ||
+      contact.type === "facebook") &&
+    !URL.canParse(contact.value) &&
+    !contact.value.startsWith("@")
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Enter a valid URL or @handle",
+      path: ["value"],
+    })
+  }
+}
+
+export const shopContactSchema = shopContactFieldsSchema.superRefine(refineShopContact)
 
 export const createShopSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -66,13 +72,22 @@ export const updateShopSchema = createShopSchema
     shopId: z.string().uuid(),
   })
 
-export const createShopContactSchema = shopContactSchema.extend({
-  shopId: z.string().uuid(),
-})
+export const createShopContactSchema = shopContactFieldsSchema
+  .extend({
+    shopId: z.string().uuid(),
+  })
+  .superRefine(refineShopContact)
 
-export const updateShopContactSchema = shopContactSchema.partial().extend({
-  contactId: z.string().uuid(),
-})
+export const updateShopContactSchema = shopContactFieldsSchema
+  .partial()
+  .extend({
+    contactId: z.string().uuid(),
+  })
+  .superRefine((contact, ctx) => {
+    if (contact.type && contact.value) {
+      refineShopContact({ type: contact.type, value: contact.value }, ctx)
+    }
+  })
 
 export type ContactType = z.infer<typeof contactTypeSchema>
 export type ShopContactInput = z.infer<typeof shopContactSchema>

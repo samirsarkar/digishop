@@ -7,18 +7,23 @@ import {
   adjustStock,
   createProduct,
   deleteProduct,
+  listProductCategories,
   listProducts,
+  listProductsPage,
   updateProduct,
   type ProductWithStock,
+  type ProductsPage,
 } from "@/features/inventory/services/products"
 import type { Product } from "@/lib/db/schema"
 import { toActionResult, type ActionResult } from "@/shared/lib/errors"
 import {
   adjustStockSchema,
   createProductSchema,
+  listProductsPageSchema,
   updateProductSchema,
   type AdjustStockInput,
   type CreateProductInput,
+  type ListProductsPageInput,
   type UpdateProductInput,
 } from "@/shared/lib/validators/inventory"
 
@@ -31,6 +36,25 @@ export async function listProductsAction(
   })
 }
 
+export async function listProductsPageAction(
+  input: ListProductsPageInput
+): Promise<ActionResult<ProductsPage>> {
+  return toActionResult(async () => {
+    const userId = await requireUserId()
+    const data = listProductsPageSchema.parse(input)
+    return listProductsPage(userId, data)
+  })
+}
+
+export async function listProductCategoriesAction(
+  shopId: string
+): Promise<ActionResult<string[]>> {
+  return toActionResult(async () => {
+    const userId = await requireUserId()
+    return listProductCategories(userId, shopId)
+  })
+}
+
 export async function createProductAction(
   input: CreateProductInput
 ): Promise<ActionResult<ProductWithStock>> {
@@ -39,6 +63,8 @@ export async function createProductAction(
     const data = createProductSchema.parse(input)
     const product = await createProduct(userId, data)
     revalidatePath("/dashboard")
+    revalidatePath("/dashboard/inventory")
+    revalidatePath("/dashboard/inventory/barcodes")
     return product
   })
 }
@@ -51,6 +77,8 @@ export async function updateProductAction(
     const data = updateProductSchema.parse(input)
     const product = await updateProduct(userId, data)
     revalidatePath("/dashboard")
+    revalidatePath("/dashboard/inventory")
+    revalidatePath("/dashboard/inventory/barcodes")
     return product
   })
 }
@@ -62,6 +90,8 @@ export async function deleteProductAction(
     const userId = await requireUserId()
     const result = await deleteProduct(userId, productId)
     revalidatePath("/dashboard")
+    revalidatePath("/dashboard/inventory")
+    revalidatePath("/dashboard/inventory/barcodes")
     return result
   })
 }
@@ -74,6 +104,7 @@ export async function adjustStockAction(
     const data = adjustStockSchema.parse(input)
     const product = await adjustStock(userId, data)
     revalidatePath("/dashboard")
+    revalidatePath("/dashboard/inventory")
     return product
   })
 }

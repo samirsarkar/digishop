@@ -30,6 +30,7 @@ export async function getPublicShopCatalog(slug: string) {
     products: products.map((product) => ({
       id: product.id,
       name: product.name,
+      category: product.category,
       price: product.price,
       imageUrl: product.imageUrl,
       description: product.description,

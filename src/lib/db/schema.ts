@@ -119,6 +119,7 @@ export const products = pgTable(
       .notNull()
       .references(() => shops.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    category: text("category"),
     sku: text("sku"),
     barcode: text("barcode"),
     price: numeric("price", { precision: 12, scale: 2 }).notNull(),

@@ -24,6 +24,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { AuthCtaLink, SignedOutLink } from "@/features/auth/components/auth-cta-link"
 import { AuthHeaderControls } from "@/features/auth/components/auth-header-controls"
 import { AUTH_ROUTES } from "@/features/auth/constants"
 import { cn } from "@/lib/utils"
@@ -138,12 +139,12 @@ export function LandingPage() {
                 lightning-fast storefront — no app store download required.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link
-                  href={AUTH_ROUTES.signUp}
+                <AuthCtaLink
                   className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
+                  signedInLabel="Go to Dashboard"
                 >
                   Start Free Trial
-                </Link>
+                </AuthCtaLink>
                 <Link
                   href="#pillars"
                   className={cn(
@@ -361,16 +362,16 @@ export function LandingPage() {
                 staff, a seamless storefront for customers — all in one place.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href={AUTH_ROUTES.signUp}
+                <AuthCtaLink
                   className={cn(
                     buttonVariants({ size: "lg", variant: "secondary" }),
                     "w-full sm:w-auto"
                   )}
+                  signedInLabel="Go to Dashboard"
                 >
                   Create Your Shop
-                </Link>
-                <Link
+                </AuthCtaLink>
+                <SignedOutLink
                   href={AUTH_ROUTES.signIn}
                   className={cn(
                     buttonVariants({ size: "lg", variant: "outline" }),
@@ -378,7 +379,7 @@ export function LandingPage() {
                   )}
                 >
                   Sign In
-                </Link>
+                </SignedOutLink>
               </div>
             </CardContent>
           </Card>
