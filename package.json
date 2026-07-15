@@ -14,6 +14,8 @@
     "skills:install": "npx skills experimental_install -a cursor -y"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1086.0",
+    "@aws-sdk/s3-request-presigner": "^3.1086.0",
     "@base-ui/react": "^1.6.0",
     "@clerk/nextjs": "^7.5.12",
     "@clerk/ui": "^1.24.1",

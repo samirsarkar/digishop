@@ -142,6 +142,30 @@ export async function listProductsByShopSlug(
   return rows.map(mapRow)
 }
 
+export async function getProduct(
+  userId: string,
+  productId: string
+): Promise<ProductWithStock> {
+  const db = getDb()
+  const [row] = await db
+    .select({
+      product: products,
+      quantity: inventory.quantity,
+      lowStockThreshold: inventory.lowStockThreshold,
+    })
+    .from(products)
+    .leftJoin(inventory, eq(inventory.productId, products.id))
+    .where(eq(products.id, productId))
+    .limit(1)
+
+  if (!row) {
+    throw new AppError("Product not found", "PRODUCT_NOT_FOUND", 404)
+  }
+
+  await assertShopAccess(userId, row.product.shopId)
+  return mapRow(row)
+}
+
 export async function createProduct(
   userId: string,
   input: CreateProductInput

@@ -2,7 +2,7 @@
 
 > **Purpose:** Single index for agents and humans. Consult this before searching the repo.  
 > **Rule:** Update this file in the same change whenever you add, move, rename, or delete source files.  
-> **Last updated:** 2026-07-13 (products grid + barcodes)
+> **Last updated:** 2026-07-15 (REST API routes + S3 image upload)
 
 ---
 
@@ -22,12 +22,15 @@
 | Auth / Clerk / routes / session | `src/features/auth/` + `src/proxy.ts` |
 | Landing / marketing copy | `src/features/marketing/` |
 | Shop onboarding / profile | `src/features/shop/` |
-| Products / stock APIs + UI | `src/features/inventory/` + `/dashboard/inventory` |
-| Orders APIs | `src/features/orders/` |
-| In-store cash sale | `src/features/pos/` |
+| Products / stock APIs + UI | `src/features/inventory/` + `/dashboard/inventory` + `src/app/api/products/` |
+| Orders APIs | `src/features/orders/` + `src/app/api/orders/` |
+| In-store cash sale | `src/features/pos/` + `src/app/api/pos/` |
 | Public catalog API | `src/features/storefront/` + `src/app/api/shop/` |
-| Payments stub | `src/features/payments/` |
-| Dashboard summary metrics | `src/features/analytics/` |
+| Merchant shop REST API | `src/app/api/shops/` |
+| Image upload (S3 presigned) | `src/features/uploads/` + `src/app/api/upload/` |
+| Payments stub | `src/features/payments/` + `src/app/api/payments/` |
+| Dashboard summary metrics | `src/features/analytics/` + `src/app/api/analytics/` |
+| REST route helpers | `src/shared/lib/api.ts` |
 | DB schema / Drizzle client | `src/lib/db.ts` + `src/lib/db/schema.ts` |
 | Shared errors / zod | `src/shared/lib/` |
 | App shell / fonts / providers | `src/app/layout.tsx` |
@@ -87,6 +90,24 @@
 | `src/app/dashboard/inventory/new/page.tsx` | Add product form | `inventory`, `shop` |
 | `src/app/dashboard/inventory/barcodes/page.tsx` | Printable barcode labels | `inventory`, `shop` |
 | `src/app/api/shop/[slug]/products/route.ts` | Public catalog JSON | `features/storefront` |
+
+### REST API routes (protected via Clerk middleware; thin, delegate to feature services)
+
+| Path | Methods | Delegates to |
+|------|---------|--------------|
+| `src/app/api/shops/route.ts` | GET current shop, POST create, PATCH update | `features/shop` |
+| `src/app/api/shops/contacts/route.ts` | GET list, POST add | `features/shop` contacts |
+| `src/app/api/shops/contacts/[contactId]/route.ts` | PATCH, DELETE | `features/shop` contacts |
+| `src/app/api/products/route.ts` | GET paginated list, POST create | `features/inventory` |
+| `src/app/api/products/categories/route.ts` | GET categories | `features/inventory` |
+| `src/app/api/products/[productId]/route.ts` | GET, PATCH, DELETE | `features/inventory` |
+| `src/app/api/products/[productId]/stock/route.ts` | PATCH adjust stock | `features/inventory` |
+| `src/app/api/orders/route.ts` | GET list, POST create | `features/orders` |
+| `src/app/api/orders/[orderId]/route.ts` | GET with items, PATCH status | `features/orders` |
+| `src/app/api/pos/cash-sale/route.ts` | POST cash sale | `features/pos` |
+| `src/app/api/payments/intent/route.ts` | POST payment intent (stub) | `features/payments` |
+| `src/app/api/analytics/summary/route.ts` | GET shop summary | `features/analytics` |
+| `src/app/api/upload/route.ts` | POST presigned S3 image upload URL | `features/uploads` |
 
 ### Planned routes (not created yet)
 
@@ -250,6 +271,20 @@ src/features/storefront/
 
 ---
 
+## Feature: `uploads` ✅ (S3 presigned image uploads)
+
+```
+src/features/uploads/
+└── services/
+    └── s3.ts
+```
+
+| Path | Role |
+|------|------|
+| `services/s3.ts` | `createImageUploadUrl` — presigned S3 PUT URL (AWS SDK v3); 503 `UPLOADS_NOT_CONFIGURED` until AWS env vars set |
+
+---
+
 ## Feature: `payments` ✅ (stub)
 
 ```
@@ -298,11 +333,13 @@ src/features/analytics/
 | `src/lib/db/schema.ts` | Full core Postgres schema (incl. `shop_contacts`) |
 | `src/shared/lib/money.ts` | `formatInr()` Indian Rupee helper |
 | `src/shared/lib/errors.ts` | `AppError`, `ActionResult`, `toActionResult` |
+| `src/shared/lib/api.ts` | Route-handler helpers: `handleApiError`, `requireDatabase`, `parseJsonBody`, `getQueryParams` |
 | `src/shared/lib/logger.ts` | Structured `appLogger` (console now; Sentry/AI later) |
 | `src/shared/lib/validators/shop.ts` | Shop + contact zod schemas |
 | `src/shared/lib/validators/inventory.ts` | Product/stock zod schemas |
 | `src/shared/lib/validators/orders.ts` | Order / cash-sale zod schemas |
 | `src/shared/lib/validators/payments.ts` | Payment intent zod schema |
+| `src/shared/lib/validators/uploads.ts` | Image upload zod schema (content types, 5 MB cap) |
 
 ---
 
@@ -330,3 +367,4 @@ src/features/analytics/
 | 2026-07-13 | Inventory UI + real dashboard analytics (7-day revenue, low stock, recent orders) |
 | 2026-07-13 | Fix Zod `.partial()` crash; always-visible auth CTAs; appLogger |
 | 2026-07-13 | Products grid, categories, infinite scroll, barcode scan/print, INR helper |
+| 2026-07-15 | REST API routes (shops, contacts, products, stock, orders, pos, payments, analytics) + S3 presigned image upload (`features/uploads`, `/api/upload`, AWS env vars) |
