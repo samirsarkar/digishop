@@ -7,18 +7,18 @@ import "./globals.css"
 const dmSans = DM_Sans({
   weight: ["400", "500", "700"],
   variable: "--font-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 })
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 })
 
 const roboto = Roboto({
   weight: ["400", "500", "700"],
   variable: "--font-roboto",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 })
 
 export const metadata: Metadata = {

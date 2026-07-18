@@ -15,6 +15,7 @@ import {
 import { BarcodeScannerButton } from "@/features/inventory/components/barcode-scanner-button"
 import { createProductAction } from "@/features/inventory/services/actions"
 import { generateProductSku, SHOP_ROUTES } from "@/features/shop/constants"
+import { RUPEE } from "@/shared/lib/money"
 
 const fieldClass =
   "flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -118,7 +119,7 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
       <CardHeader>
         <CardTitle>Add product</CardTitle>
         <CardDescription>
-          Prices use Indian Rupees (₹). Scan a barcode or generate a SKU before
+          Prices use Indian Rupees ({RUPEE}). Scan a barcode or generate a SKU before
           saving.
         </CardDescription>
       </CardHeader>
@@ -159,7 +160,7 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
 
           <div className="space-y-2">
             <label htmlFor="product-price" className="text-sm font-medium">
-              Selling price (₹)
+              Selling price ({RUPEE})
             </label>
             <input
               id="product-price"
@@ -176,7 +177,7 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
 
           <div className="space-y-2">
             <label htmlFor="product-cost" className="text-sm font-medium">
-              Cost price (₹){" "}
+              Cost price ({RUPEE}){" "}
               <span className="text-muted-foreground">(optional)</span>
             </label>
             <input

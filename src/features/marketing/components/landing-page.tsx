@@ -24,9 +24,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { AuthCtaLink, SignedOutLink } from "@/features/auth/components/auth-cta-link"
+import {
+  AuthCtaLink,
+  SignedOutLink,
+} from "@/features/auth/components/auth-cta-link"
 import { AuthHeaderControls } from "@/features/auth/components/auth-header-controls"
 import { AUTH_ROUTES } from "@/features/auth/constants"
+import { RUPEE } from "@/shared/lib/money"
 import { cn } from "@/lib/utils"
 
 const pillars = [
@@ -107,13 +111,22 @@ export function LandingPage() {
             <span className="font-semibold tracking-tight">DigiShop</span>
           </div>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
-            <a href="#pillars" className="transition-colors hover:text-foreground">
+            <a
+              href="#pillars"
+              className="transition-colors hover:text-foreground"
+            >
               Features
             </a>
-            <a href="#roles" className="transition-colors hover:text-foreground">
+            <a
+              href="#roles"
+              className="transition-colors hover:text-foreground"
+            >
               Roles
             </a>
-            <a href="#checkout" className="transition-colors hover:text-foreground">
+            <a
+              href="#checkout"
+              className="transition-colors hover:text-foreground"
+            >
               Checkout
             </a>
           </nav>
@@ -140,7 +153,10 @@ export function LandingPage() {
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <AuthCtaLink
-                  className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "w-full sm:w-auto",
+                  )}
                   signedInLabel="Go to Dashboard"
                 >
                   Start Free Trial
@@ -149,7 +165,7 @@ export function LandingPage() {
                   href="#pillars"
                   className={cn(
                     buttonVariants({ size: "lg", variant: "outline" }),
-                    "w-full sm:w-auto"
+                    "w-full sm:w-auto",
                   )}
                 >
                   See How It Works
@@ -175,7 +191,10 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="pillars" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+        <section
+          id="pillars"
+          className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20"
+        >
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Three pillars, one platform
@@ -223,8 +242,8 @@ export function LandingPage() {
                   Your phone is the new POS
                 </h2>
                 <p className="mt-4 text-muted-foreground">
-                  Walk the shop with a smartphone or tablet. Scan incoming stock,
-                  build carts at checkout, and watch analytics update in
+                  Walk the shop with a smartphone or tablet. Scan incoming
+                  stock, build carts at checkout, and watch analytics update in
                   real time — inventory levels, daily P&amp;L, and sales trends
                   included.
                 </p>
@@ -251,7 +270,9 @@ export function LandingPage() {
               <Card className="border-primary/20 bg-card shadow-lg">
                 <CardHeader>
                   <CardTitle>Today&apos;s snapshot</CardTitle>
-                  <CardDescription>Sample owner dashboard preview</CardDescription>
+                  <CardDescription>
+                    Sample owner dashboard preview
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between rounded-lg bg-muted/60 px-4 py-3">
@@ -259,14 +280,16 @@ export function LandingPage() {
                       Revenue today
                     </span>
                     <span className="font-numeric text-lg font-semibold">
-                      ₹12,480
+                      {RUPEE}12,480
                     </span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-muted/60 px-4 py-3">
                     <span className="text-sm text-muted-foreground">
                       Orders fulfilled
                     </span>
-                    <span className="font-numeric text-lg font-semibold">47</span>
+                    <span className="font-numeric text-lg font-semibold">
+                      47
+                    </span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-muted/60 px-4 py-3">
                     <span className="text-sm text-muted-foreground">
@@ -282,14 +305,17 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="checkout" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+        <section
+          id="checkout"
+          className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20"
+        >
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Flexible checkout for customers
             </h2>
             <p className="mt-4 text-muted-foreground">
-              Customers browse live inventory from home or on the go, then choose
-              how they want to pay and pick up.
+              Customers browse live inventory from home or on the go, then
+              choose how they want to pay and pick up.
             </p>
           </div>
 
@@ -314,8 +340,8 @@ export function LandingPage() {
                 </div>
                 <CardTitle>Pay later / COD</CardTitle>
                 <CardDescription>
-                  Reserve items online so they don&apos;t sell out. Pay with cash
-                  or digital payment at the counter when you pick up.
+                  Reserve items online so they don&apos;t sell out. Pay with
+                  cash or digital payment at the counter when you pick up.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -365,7 +391,7 @@ export function LandingPage() {
                 <AuthCtaLink
                   className={cn(
                     buttonVariants({ size: "lg", variant: "secondary" }),
-                    "w-full sm:w-auto"
+                    "w-full sm:w-auto",
                   )}
                   signedInLabel="Go to Dashboard"
                 >
@@ -375,7 +401,7 @@ export function LandingPage() {
                   href={AUTH_ROUTES.signIn}
                   className={cn(
                     buttonVariants({ size: "lg", variant: "outline" }),
-                    "w-full border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 sm:w-auto"
+                    "w-full border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 sm:w-auto",
                   )}
                 >
                   Sign In
