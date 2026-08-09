@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useCart } from "@/features/storefront/components/cart-provider"
+import { QuantityStepper } from "@/features/storefront/components/quantity-stepper"
 import { placeCustomerOrderAction } from "@/features/storefront/services/actions"
 import { formatInr } from "@/shared/lib/money"
 import { cn } from "@/lib/utils"
@@ -88,6 +89,17 @@ export function CheckoutForm({
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
+      <div className="lg:col-span-5">
+        <Link
+          href={`/shop/${shopSlug}`}
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "-ml-2 text-muted-foreground"
+          )}
+        >
+          ← Continue shopping
+        </Link>
+      </div>
       <Card className="lg:col-span-3">
         <CardHeader>
           <CardTitle>Your items</CardTitle>
@@ -107,15 +119,10 @@ export function CheckoutForm({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={line.maxQuantity}
-                    value={line.quantity}
-                    onChange={(e) =>
-                      setQuantity(line.productId, Number(e.target.value) || 1)
-                    }
-                    className="h-8 w-16 rounded-md border border-input px-2 text-sm"
+                  <QuantityStepper
+                    quantity={line.quantity}
+                    maxQuantity={line.maxQuantity}
+                    onChange={(next) => setQuantity(line.productId, next)}
                   />
                   <Button
                     type="button"

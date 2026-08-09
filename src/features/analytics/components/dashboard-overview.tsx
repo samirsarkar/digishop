@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { RecentOrdersPanel } from "@/features/analytics/components/recent-orders-panel"
 import type { ShopSummary } from "@/features/analytics/services/summary"
 import { SHOP_ROUTES } from "@/features/shop/constants"
 import { formatInr } from "@/shared/lib/money"
@@ -21,11 +22,13 @@ function dayLabel(isoDate: string) {
 }
 
 export function DashboardOverview({
+  shopId,
   shopName,
   shopSlug,
   summary,
   userLabel,
 }: {
+  shopId: string
   shopName: string
   shopSlug: string
   summary: ShopSummary
@@ -93,6 +96,17 @@ export function DashboardOverview({
         />
       </div>
 
+      <RecentOrdersPanel
+        shopId={shopId}
+        orders={summary.recentOrders.map((order) => ({
+          ...order,
+          createdAt:
+            order.createdAt instanceof Date
+              ? order.createdAt.toISOString()
+              : String(order.createdAt),
+        }))}
+      />
+
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardHeader>
@@ -100,7 +114,7 @@ export function DashboardOverview({
               <TrendingUp className="size-4" />
               Revenue — last 7 days
             </CardTitle>
-            <CardDescription>Daily gross sales (excluding cancelled)</CardDescription>
+            <CardDescription>Daily completed sales only</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex h-40 items-end gap-2">
@@ -162,44 +176,6 @@ export function DashboardOverview({
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent orders</CardTitle>
-          <CardDescription>Latest sales recorded for this shop</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {summary.recentOrders.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No orders yet. Add products, then record sales from POS (coming next) or
-              the cash-sale API.
-            </p>
-          ) : (
-            <ul className="divide-y rounded-lg border">
-              {summary.recentOrders.map((order) => (
-                <li
-                  key={order.id}
-                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
-                >
-                  <div>
-                    <p className="font-medium capitalize">{order.status}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {order.paymentMethod} ·{" "}
-                      {order.createdAt.toLocaleString("en-IN", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
-                    </p>
-                  </div>
-                  <p className="font-numeric font-medium">
-                    {formatInr(Number(order.totalAmount))}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
 
       {summary.productCount === 0 ? (
         <Card className="border-primary/30 bg-primary/5">

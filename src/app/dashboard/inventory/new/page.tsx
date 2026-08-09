@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation"
 
-import { ProductForm } from "@/features/inventory/components/product-form"
+import { ProductIntake } from "@/features/inventory/components/product-intake"
 import { listProductCategories } from "@/features/inventory/services/products"
 import { requireUserId } from "@/features/auth/services/session"
 import { MerchantShell } from "@/features/shop/components/merchant-shell"
 import { SHOP_ROUTES } from "@/features/shop/constants"
-import { getShopForUser } from "@/features/shop/services/shop"
+import { loadMerchantShop } from "@/features/shop/services/shop"
+import { DbUnavailableView } from "@/shared/components/db-unavailable"
 
 export default async function NewProductPage() {
   const userId = await requireUserId()
@@ -14,24 +15,41 @@ export default async function NewProductPage() {
     redirect(SHOP_ROUTES.dashboard)
   }
 
-  const shop = await getShopForUser(userId)
-  if (!shop) {
+  const loaded = await loadMerchantShop(userId)
+  if (loaded.status === "db_unavailable") {
+    return <DbUnavailableView retryHref={SHOP_ROUTES.addProduct} />
+  }
+  if (loaded.status === "no_shop") {
     redirect(SHOP_ROUTES.onboarding)
   }
 
-  const categories = await listProductCategories(userId, shop.id)
+  const { shop } = loaded
+
+  let categories
+  try {
+    categories = await listProductCategories(userId, shop.id)
+  } catch {
+    return (
+      <DbUnavailableView
+        retryHref={SHOP_ROUTES.addProduct}
+        shopName={shop.name}
+      />
+    )
+  }
 
   return (
     <MerchantShell shopName={shop.name}>
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Add product</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Add / restock
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Owners and managers can add catalog items with category, SKU, and
-            barcode.
+            Create a new catalog item, or add stock to a product you already
+            sell by scanning or searching.
           </p>
         </div>
-        <ProductForm shopId={shop.id} categories={categories} />
+        <ProductIntake shopId={shop.id} categories={categories} />
       </div>
     </MerchantShell>
   )

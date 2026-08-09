@@ -5,8 +5,10 @@ import { revalidatePath } from "next/cache"
 import { requireUserId } from "@/features/auth/services/session"
 import {
   adjustStock,
+  allocateNextBarcode,
   createProduct,
   deleteProduct,
+  findProductByCode,
   listProductCategories,
   listProducts,
   listProductsPage,
@@ -106,5 +108,25 @@ export async function adjustStockAction(
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/inventory")
     return product
+  })
+}
+
+export async function findProductByCodeAction(
+  shopId: string,
+  code: string
+): Promise<ActionResult<ProductWithStock | null>> {
+  return toActionResult(async () => {
+    const userId = await requireUserId()
+    return findProductByCode(userId, shopId, code)
+  })
+}
+
+export async function allocateNextBarcodeAction(
+  shopId: string
+): Promise<ActionResult<{ barcode: string }>> {
+  return toActionResult(async () => {
+    const userId = await requireUserId()
+    const barcode = await allocateNextBarcode(userId, shopId)
+    return { barcode }
   })
 }

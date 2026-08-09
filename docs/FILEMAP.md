@@ -2,7 +2,7 @@
 
 > **Purpose:** Single index for agents and humans. Consult this before searching the repo.  
 > **Rule:** Update this file in the same change whenever you add, move, rename, or delete source files.  
-> **Last updated:** 2026-07-18 (customer storefront)
+> **Last updated:** 2026-08-09 (Restock clear + mobile auth header)
 
 ---
 
@@ -24,7 +24,8 @@
 | Shop onboarding / profile | `src/features/shop/` |
 | Products / stock APIs + UI | `src/features/inventory/` + `/dashboard/inventory` + `src/app/api/products/` |
 | Orders APIs | `src/features/orders/` + `src/app/api/orders/` |
-| In-store cash sale | `src/features/pos/` + `src/app/api/pos/` |
+| In-store cash sale / quick billing | `src/features/pos/` + `/dashboard/pos` + `src/app/api/pos/` |
+| Shop charge rules (GST etc.) | `src/features/shop/services/charges.ts` |
 | Public catalog API | `src/features/storefront/` + `src/app/api/shop/` |
 | Merchant shop REST API | `src/app/api/shops/` |
 | Image upload (S3 presigned) | `src/features/uploads/` + `src/app/api/upload/` |
@@ -51,7 +52,7 @@
 | `package.json` | Scripts & dependencies (`db:*` scripts) |
 | `pnpm-lock.yaml` | Lockfile |
 | `tsconfig.json` | TypeScript paths (`@/*` → `src/*`) |
-| `next.config.ts` | Next.js config |
+| `next.config.ts` | Next.js config (`allowedDevOrigins` for LAN/mobile) |
 | `postcss.config.mjs` | PostCSS / Tailwind |
 | `eslint.config.mjs` | ESLint |
 | `components.json` | shadcn/ui config (base-nova) |
@@ -87,12 +88,14 @@
 | `src/app/dashboard/page.tsx` | `/dashboard` (protected) | `auth`, `shop`, `analytics` |
 | `src/app/dashboard/onboarding/page.tsx` | `/dashboard/onboarding` | `features/shop` |
 | `src/app/dashboard/inventory/page.tsx` | `/dashboard/inventory` products grid | `inventory`, `shop` |
-| `src/app/dashboard/inventory/new/page.tsx` | Add product form | `inventory`, `shop` |
-| `src/app/dashboard/inventory/barcodes/page.tsx` | Printable barcode labels | `inventory`, `shop` |
+| `src/app/dashboard/inventory/new/page.tsx` | Add / restock intake | `inventory`, `shop` |
+| `src/app/dashboard/inventory/barcodes/page.tsx` | Label studio (barcode/QR create + print) | `inventory`, `shop` |
+| `src/app/dashboard/pos/page.tsx` | Quick billing / POS | `pos`, `shop`, `inventory` |
+| `src/app/dashboard/orders/page.tsx` | All orders + detail history | `orders`, `shop` |
 | `src/app/api/shop/[slug]/products/route.ts` | Public catalog JSON | `features/storefront` |
 | `src/app/shop/[shopSlug]/page.tsx` | Public customer storefront | `features/storefront` |
 | `src/app/shop/[shopSlug]/checkout/page.tsx` | Customer checkout (COD / pickup) | `features/storefront` |
-| `src/app/shop/[shopSlug]/order/[orderId]/page.tsx` | Order confirmation | `features/storefront` |
+| `src/app/shop/[shopSlug]/order/[orderId]/page.tsx` | Order confirmation + pickup QR | `features/storefront` |
 
 ### REST API routes (protected via Clerk middleware; thin, delegate to feature services)
 
@@ -116,8 +119,6 @@
 
 | Path | Role |
 |------|------|
-| `src/app/dashboard/pos/` | In-store POS UI |
-| `src/app/dashboard/orders/` | Order management UI |
 | `src/app/dashboard/analytics/` | Dedicated analytics / P&L UI (overview lives on dashboard) |
 
 ---
@@ -182,15 +183,19 @@ src/features/shop/
 └── services/
     ├── shop.ts
     ├── contacts.ts
+    ├── charges.ts
+    ├── charge-actions.ts
     └── actions.ts
 ```
 
 | Path | Role |
 |------|------|
-| `constants.ts` | Dashboard/onboarding/inventory routes, `slugifyShopName` |
+| `constants.ts` | Dashboard routes, `slugifyShopName`, `generateProductSku`, `formatShopBarcode` |
 | `types.ts` | `ShopProfile`, `ShopRole`, `ShopContactProfile` |
-| `services/shop.ts` | get/create/update shop, access checks |
+| `services/shop.ts` | get/create/update shop, `loadMerchantShop` soft-load |
 | `services/contacts.ts` | list/add/update/delete shop contacts |
+| `services/charges.ts` | GST/custom charge rules (seed GST disabled) |
+| `services/charge-actions.ts` | Server Actions for charge rules |
 | `services/actions.ts` | Shop + contact Server Actions |
 | `components/onboarding-form.tsx` | Client onboarding form (incl. phone/email) |
 | `components/merchant-shell.tsx` | Shared merchant header + nav |
@@ -204,7 +209,9 @@ src/features/inventory/
 ├── types.ts
 ├── components/
 │   ├── products-catalog.tsx
+│   ├── product-intake.tsx
 │   ├── product-form.tsx
+│   ├── restock-form.tsx
 │   ├── barcode-scanner-button.tsx
 │   └── barcode-print-section.tsx
 └── services/
@@ -214,38 +221,51 @@ src/features/inventory/
 
 | Path | Role |
 |------|------|
-| `services/products.ts` | CRUD, paginated list, categories, public list by slug |
-| `services/actions.ts` | Server Actions for products + pagination |
+| `services/products.ts` | CRUD, paginated list, `allocateNextBarcode`, stock adjust |
+| `services/actions.ts` | Server Actions for products, restock, barcode allocate |
 | `components/products-catalog.tsx` | Grid + category filters + infinite scroll |
-| `components/product-form.tsx` | Add product (SKU generate/copy, category) |
+| `components/product-intake.tsx` | New product / Restock tabs |
+| `components/product-form.tsx` | New product (SKU + sequential barcode generate) |
+| `components/restock-form.tsx` | Scan/search existing product + add stock |
 | `components/barcode-scanner-button.tsx` | Camera barcode scan (ZXing) |
-| `components/barcode-print-section.tsx` | Select + print Code128 labels |
+| `components/barcode-print-section.tsx` | Codes + copies + print Code128/QR labels |
 | `types.ts` | Re-exports `ProductWithStock` |
 
 ---
 
-## Feature: `orders` ✅ (APIs)
+## Feature: `orders` ✅
 
 ```
 src/features/orders/
+├── constants.ts
 ├── types.ts
+├── components/
+│   ├── orders-list.tsx
+│   └── order-detail-dialog.tsx
 └── services/
     ├── orders.ts
+    ├── order-events.ts
     └── actions.ts
 ```
 
 | Path | Role |
 |------|------|
-| `services/orders.ts` | list/get/create order, update status, stock decrement |
+| `constants.ts` | `ORDER_STATUS`, events, labels, pickup code generator |
+| `services/orders.ts` | list/get/detail/find, status update, stock release, COD hold expiry |
+| `services/order-events.ts` | Audit trail writer (`order_events`) |
 | `services/actions.ts` | Server Actions for orders |
+| `components/orders-list.tsx` | Searchable order list + open detail |
+| `components/order-detail-dialog.tsx` | Items, customer notes, history, status actions (no delete) |
 | `types.ts` | Re-exports `OrderWithItems` |
 
 ---
 
-## Feature: `pos` ✅ (APIs)
+## Feature: `pos` ✅
 
 ```
 src/features/pos/
+├── components/
+│   └── quick-billing.tsx
 └── services/
     ├── cash-sale.ts
     └── actions.ts
@@ -253,7 +273,8 @@ src/features/pos/
 
 | Path | Role |
 |------|------|
-| `services/cash-sale.ts` | `createCashSale` → completed cash order + stock |
+| `components/quick-billing.tsx` | Scan/search cart, GST toggle, custom charges, cash checkout |
+| `services/cash-sale.ts` | `createCashSale` → completed cash order + stock + order_charges |
 | `services/actions.ts` | `createCashSaleAction` |
 
 ---
@@ -264,6 +285,7 @@ src/features/pos/
 src/features/storefront/
 ├── components/
 │   ├── cart-provider.tsx
+│   ├── quantity-stepper.tsx
 │   ├── storefront-header.tsx
 │   ├── storefront-catalog.tsx
 │   └── checkout-form.tsx
@@ -275,13 +297,15 @@ src/features/storefront/
 
 | Path | Role |
 |------|------|
-| `services/catalog.ts` | Public shop + in-stock products payload |
-| `services/checkout.ts` | Customer COD order + public receipt |
+| `services/catalog.ts` | Public shop + in-stock products; expires stale COD holds |
+| `services/checkout.ts` | Customer COD order (pending + 30m hold) + public receipt |
 | `services/actions.ts` | `placeCustomerOrderAction`, receipt action |
 | `components/cart-provider.tsx` | LocalStorage cart per shop slug |
-| `components/storefront-catalog.tsx` | Customer product grid + add to cart |
+| `components/quantity-stepper.tsx` | Shared − / count / + control |
+| `components/storefront-catalog.tsx` | Product grid, search, filters, cart qty stepper |
 | `components/checkout-form.tsx` | Pickup details + place order |
 | `components/storefront-header.tsx` | Shop name + cart link |
+| `components/order-pickup-qr.tsx` | QR for pickup code on receipt |
 
 ---
 
@@ -320,7 +344,8 @@ src/features/payments/
 ```
 src/features/analytics/
 ├── components/
-│   └── dashboard-overview.tsx
+│   ├── dashboard-overview.tsx
+│   └── recent-orders-panel.tsx
 └── services/
     ├── summary.ts
     └── actions.ts
@@ -328,9 +353,10 @@ src/features/analytics/
 
 | Path | Role |
 |------|------|
-| `services/summary.ts` | `getShopSummary` (metrics, low stock, 7-day revenue, recent orders) |
+| `services/summary.ts` | `getShopSummary` (completed revenue, low stock, recent orders) |
 | `services/actions.ts` | `getShopSummaryAction` |
 | `components/dashboard-overview.tsx` | Merchant overview UI with charts + lists |
+| `components/recent-orders-panel.tsx` | Confirm / Modify / Cancel recent orders |
 
 ---
 
@@ -343,9 +369,12 @@ src/features/analytics/
 | `src/components/ui/badge.tsx` | Badge |
 | `src/components/ui/separator.tsx` | Separator |
 | `src/lib/utils.ts` | `cn()` helper |
-| `src/lib/db.ts` | Neon HTTP + Drizzle client (`getDb`) |
-| `src/lib/db/schema.ts` | Full core Postgres schema (incl. `shop_contacts`) |
-| `src/shared/lib/money.ts` | `formatInr()` Indian Rupee helper |
+| `src/lib/db.ts` | Neon HTTP + Drizzle client (`getDb`, `withDbRetry`) |
+| `src/lib/db/schema.ts` | Full core Postgres schema (incl. `shop_contacts`, `shops.barcode_seq`, order hold fields) |
+| `src/shared/lib/money.ts` | `RUPEE` (U+20B9) + `formatInr()` |
+| `src/shared/components/rupee-mark.tsx` | Safe ₹ glyph with `font-numeric` |
+| `src/shared/components/db-unavailable.tsx` | Soft-fail UI when Neon is unreachable |
+| `src/shared/lib/charges.ts` | Pure `computeCharges` for bill totals |
 | `src/shared/lib/errors.ts` | `AppError`, `ActionResult`, `toActionResult` |
 | `src/shared/lib/api.ts` | Route-handler helpers: `handleApiError`, `requireDatabase`, `parseJsonBody`, `getQueryParams` |
 | `src/shared/lib/logger.ts` | Structured `appLogger` (console now; Sentry/AI later) |
@@ -383,3 +412,10 @@ src/features/analytics/
 | 2026-07-13 | Products grid, categories, infinite scroll, barcode scan/print, INR helper |
 | 2026-07-18 | Public customer storefront + COD checkout at `/shop/[slug]` |
 | 2026-07-15 | REST API routes (shops, contacts, products, stock, orders, pos, payments, analytics) + S3 presigned image upload (`features/uploads`, `/api/upload`, AWS env vars) |
+| 2026-08-09 | Cart +/- stepper, COD stock holds + cancel restore, dashboard Confirm/Modify, barcode ₹ fix |
+| 2026-08-09 | ORDER_STATUS constants, pickup codes + QR, product search, Labels studio, POS billing, GST/charges |
+| 2026-08-09 | RupeeMark + always-on INR cursor rule; fix POS Fixed ₹ native select glyph |
+| 2026-08-09 | Orders tab, clickable detail dialog, order_events history (no delete) |
+| 2026-08-09 | Neon `withDbRetry` + dashboard soft-fail; order rows no nested buttons |
+| 2026-08-09 | Restock tab (scan/search), sequential DS barcodes, label copies |
+| 2026-08-09 | Restock Clear; LAN allowedDevOrigins; sticky merchant UserButton |

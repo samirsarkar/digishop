@@ -19,6 +19,8 @@ export async function createCashSaleAction(
     const data = createCashSaleSchema.parse(input)
     const order = await createCashSale(userId, data)
     revalidatePath("/dashboard")
+    revalidatePath("/dashboard/pos")
+    revalidatePath("/dashboard/inventory")
     return order
   })
 }

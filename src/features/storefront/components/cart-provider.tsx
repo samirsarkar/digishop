@@ -47,16 +47,23 @@ export function CartProvider({
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey(shopSlug))
-      if (raw) {
-        const parsed = JSON.parse(raw) as CartLine[]
-        if (Array.isArray(parsed)) setLines(parsed)
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      try {
+        const raw = localStorage.getItem(storageKey(shopSlug))
+        if (raw) {
+          const parsed = JSON.parse(raw) as CartLine[]
+          if (Array.isArray(parsed)) setLines(parsed)
+        }
+      } catch {
+        // ignore corrupt cart
       }
-    } catch {
-      // ignore corrupt cart
+      setHydrated(true)
+    })
+    return () => {
+      cancelled = true
     }
-    setHydrated(true)
   }, [shopSlug])
 
   useEffect(() => {

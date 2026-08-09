@@ -151,7 +151,8 @@
     gap: 12px;
     padding: 12px;
   }
-  .print\\:hidden {
+  /* Utility class to hide elements when printing */
+  .print\:hidden {
     display: none !important;
   }
 }

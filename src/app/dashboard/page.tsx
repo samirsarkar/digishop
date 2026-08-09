@@ -14,7 +14,8 @@ import { getShopSummary } from "@/features/analytics/services/summary"
 import { getCurrentUser, requireUserId } from "@/features/auth/services/session"
 import { MerchantShell } from "@/features/shop/components/merchant-shell"
 import { SHOP_ROUTES } from "@/features/shop/constants"
-import { getShopForUser } from "@/features/shop/services/shop"
+import { loadMerchantShop } from "@/features/shop/services/shop"
+import { DbUnavailableView } from "@/shared/components/db-unavailable"
 import { cn } from "@/lib/utils"
 
 export default async function DashboardPage() {
@@ -42,16 +43,27 @@ export default async function DashboardPage() {
     )
   }
 
-  const shop = await getShopForUser(userId)
-  if (!shop) {
+  const loaded = await loadMerchantShop(userId)
+  if (loaded.status === "db_unavailable") {
+    return <DbUnavailableView retryHref={SHOP_ROUTES.dashboard} />
+  }
+  if (loaded.status === "no_shop") {
     redirect(SHOP_ROUTES.onboarding)
   }
 
-  const summary = await getShopSummary(userId, shop.id)
+  const { shop } = loaded
+
+  let summary
+  try {
+    summary = await getShopSummary(userId, shop.id)
+  } catch {
+    return <DbUnavailableView retryHref={SHOP_ROUTES.dashboard} shopName={shop.name} />
+  }
 
   return (
     <MerchantShell shopName={shop.name}>
       <DashboardOverview
+        shopId={shop.id}
         shopName={shop.name}
         shopSlug={shop.slug}
         summary={summary}

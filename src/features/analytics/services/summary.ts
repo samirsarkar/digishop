@@ -1,5 +1,7 @@
 import { and, asc, count, desc, eq, gte, sql } from "drizzle-orm"
 
+import { ORDER_STATUS } from "@/features/orders/constants"
+import { expireStaleCustomerOrders } from "@/features/orders/services/orders"
 import { assertShopAccess } from "@/features/shop/services/shop"
 import { getDb } from "@/lib/db"
 import { inventory, orders, products } from "@/lib/db/schema"
@@ -14,9 +16,11 @@ export type LowStockProduct = {
 
 export type RecentOrder = {
   id: string
+  pickupCode: string | null
   totalAmount: string
   paymentMethod: string
   status: string
+  notes: string | null
   createdAt: Date
 }
 
@@ -51,11 +55,13 @@ export async function getShopSummary(
   shopId: string
 ): Promise<ShopSummary> {
   await assertShopAccess(userId, shopId)
+  await expireStaleCustomerOrders(shopId)
   const db = getDb()
 
   const todayStart = startOfLocalDay()
   const weekStart = startOfLocalDay()
   weekStart.setDate(weekStart.getDate() - 6)
+  const completedOnly = eq(orders.status, ORDER_STATUS.COMPLETED)
 
   const [productRow] = await db
     .select({ value: count() })
@@ -91,7 +97,7 @@ export async function getShopSummary(
       and(
         eq(orders.shopId, shopId),
         gte(orders.createdAt, todayStart),
-        sql`${orders.status} <> 'cancelled'`
+        completedOnly
       )
     )
 
@@ -105,7 +111,7 @@ export async function getShopSummary(
       and(
         eq(orders.shopId, shopId),
         gte(orders.createdAt, weekStart),
-        sql`${orders.status} <> 'cancelled'`
+        completedOnly
       )
     )
 
@@ -131,15 +137,17 @@ export async function getShopSummary(
   const recentOrders = await db
     .select({
       id: orders.id,
+      pickupCode: orders.pickupCode,
       totalAmount: orders.totalAmount,
       paymentMethod: orders.paymentMethod,
       status: orders.status,
+      notes: orders.notes,
       createdAt: orders.createdAt,
     })
     .from(orders)
     .where(eq(orders.shopId, shopId))
     .orderBy(desc(orders.createdAt))
-    .limit(5)
+    .limit(10)
 
   const weekOrders = await db
     .select({
@@ -151,7 +159,7 @@ export async function getShopSummary(
       and(
         eq(orders.shopId, shopId),
         gte(orders.createdAt, weekStart),
-        sql`${orders.status} <> 'cancelled'`
+        completedOnly
       )
     )
 

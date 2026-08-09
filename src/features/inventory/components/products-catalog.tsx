@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import Link from "next/link"
-import { PackagePlus, Printer } from "lucide-react"
+import { PackagePlus, Printer, Search, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
@@ -28,6 +28,8 @@ export function ProductsCatalog({
   initialCategory = "",
 }: ProductsCatalogProps) {
   const [category, setCategory] = useState(initialCategory)
+  const [query, setQuery] = useState("")
+  const [debouncedQuery, setDebouncedQuery] = useState("")
   const [items, setItems] = useState(initialItems)
   const [cursor, setCursor] = useState<string | null>(initialCursor)
   const [error, setError] = useState<string | null>(null)
@@ -36,14 +38,19 @@ export function ProductsCatalog({
   const sentinelRef = useRef<HTMLDivElement>(null)
   const loadingRef = useRef(false)
 
-  const resetForCategory = useCallback(
-    (nextCategory: string) => {
-      setCategory(nextCategory)
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedQuery(query.trim()), 220)
+    return () => window.clearTimeout(t)
+  }, [query])
+
+  const reload = useCallback(
+    (nextCategory: string, nextQuery: string) => {
       setError(null)
       startTransition(async () => {
         const result = await listProductsPageAction({
           shopId,
           category: nextCategory || undefined,
+          q: nextQuery || undefined,
           cursor: null,
           limit: 30,
         })
@@ -58,6 +65,15 @@ export function ProductsCatalog({
     [shopId]
   )
 
+  const isFirst = useRef(true)
+  useEffect(() => {
+    if (isFirst.current) {
+      isFirst.current = false
+      if (!debouncedQuery && !category) return
+    }
+    reload(category, debouncedQuery)
+  }, [category, debouncedQuery, reload])
+
   const loadMore = useCallback(async () => {
     if (!cursor || loadingRef.current || pending) return
     loadingRef.current = true
@@ -66,6 +82,7 @@ export function ProductsCatalog({
       const result = await listProductsPageAction({
         shopId,
         category: category || undefined,
+        q: debouncedQuery || undefined,
         cursor,
         limit: 30,
       })
@@ -86,7 +103,7 @@ export function ProductsCatalog({
       loadingRef.current = false
       setLoadingMore(false)
     }
-  }, [category, cursor, pending, shopId])
+  }, [category, cursor, debouncedQuery, pending, shopId])
 
   useEffect(() => {
     const node = sentinelRef.current
@@ -111,39 +128,56 @@ export function ProductsCatalog({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Browse inventory, filter by category, and manage stock.
+            Search, filter by category, and manage stock.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href={SHOP_ROUTES.addProduct}
-            className={cn(buttonVariants())}
-          >
+          <Link href={SHOP_ROUTES.addProduct} className={cn(buttonVariants())}>
             <PackagePlus className="size-4" />
-            Add product
+            Add / restock
           </Link>
           <Link
             href={SHOP_ROUTES.barcodes}
             className={cn(buttonVariants({ variant: "outline" }))}
           >
             <Printer className="size-4" />
-            Barcodes
+            Labels
           </Link>
         </div>
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search name, SKU, barcode…"
+          className="flex h-10 w-full rounded-lg border border-input bg-background py-2 pr-9 pl-9 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        />
+        {query ? (
+          <button
+            type="button"
+            aria-label="Clear search"
+            className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted"
+            onClick={() => setQuery("")}
+          >
+            <X className="size-4" />
+          </button>
+        ) : null}
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         <FilterChip
           label="All"
           active={category === ""}
-          onClick={() => resetForCategory("")}
+          onClick={() => setCategory("")}
         />
         {categories.map((cat) => (
           <FilterChip
             key={cat}
             label={cat}
             active={category === cat}
-            onClick={() => resetForCategory(cat)}
+            onClick={() => setCategory(cat)}
           />
         ))}
       </div>
@@ -156,16 +190,22 @@ export function ProductsCatalog({
 
       {items.length === 0 && !pending ? (
         <div className="rounded-xl border border-dashed px-6 py-16 text-center">
-          <p className="font-medium">No products yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add your first product to start tracking stock and sales.
+          <p className="font-medium">
+            {query || category ? "No products match" : "No products yet"}
           </p>
-          <Link
-            href={SHOP_ROUTES.addProduct}
-            className={cn(buttonVariants(), "mt-4")}
-          >
-            Add product
-          </Link>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {query || category
+              ? "Try another search or clear filters."
+              : "Add your first product to start tracking stock and sales."}
+          </p>
+          {!query && !category ? (
+            <Link
+              href={SHOP_ROUTES.addProduct}
+              className={cn(buttonVariants(), "mt-4")}
+            >
+              Add / restock
+            </Link>
+          ) : null}
         </div>
       ) : (
         <ul className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
@@ -204,7 +244,10 @@ export function ProductsCatalog({
                       Qty {product.quantity}
                     </span>
                     {low ? (
-                      <Badge variant="destructive" className="h-4 px-1.5 text-[9px]">
+                      <Badge
+                        variant="destructive"
+                        className="h-4 px-1.5 text-[9px]"
+                      >
                         Low
                       </Badge>
                     ) : null}

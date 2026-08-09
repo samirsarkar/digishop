@@ -13,9 +13,14 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { BarcodeScannerButton } from "@/features/inventory/components/barcode-scanner-button"
-import { createProductAction } from "@/features/inventory/services/actions"
+import {
+  allocateNextBarcodeAction,
+  createProductAction,
+  findProductByCodeAction,
+} from "@/features/inventory/services/actions"
+import type { ProductWithStock } from "@/features/inventory/services/products"
 import { generateProductSku, SHOP_ROUTES } from "@/features/shop/constants"
-import { RUPEE } from "@/shared/lib/money"
+import { RupeeMark } from "@/shared/components/rupee-mark"
 
 const fieldClass =
   "flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -34,9 +39,14 @@ const SUGGESTED_CATEGORIES = [
 type ProductFormProps = {
   shopId: string
   categories?: string[]
+  onSwitchToRestock?: (product: ProductWithStock) => void
 }
 
-export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
+export function ProductForm({
+  shopId,
+  categories = [],
+  onSwitchToRestock,
+}: ProductFormProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -50,6 +60,7 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
   const [sku, setSku] = useState("")
   const [barcode, setBarcode] = useState("")
   const [description, setDescription] = useState("")
+  const [existingHit, setExistingHit] = useState<ProductWithStock | null>(null)
 
   const categoryOptions = useMemo(() => {
     const set = new Set([...SUGGESTED_CATEGORIES, ...categories])
@@ -67,11 +78,25 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
     setBarcode("")
     setDescription("")
     setCopied(false)
+    setExistingHit(null)
   }
 
   function onGenerateSku() {
     setSku(generateProductSku())
     setCopied(false)
+  }
+
+  function onGenerateBarcode() {
+    setError(null)
+    startTransition(async () => {
+      const result = await allocateNextBarcodeAction(shopId)
+      if (!result.ok) {
+        setError(result.error.message)
+        return
+      }
+      setBarcode(result.data.barcode)
+      setExistingHit(null)
+    })
   }
 
   async function onCopySku() {
@@ -85,9 +110,37 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
     }
   }
 
+  function checkExistingBarcode(code: string) {
+    const value = code.trim()
+    if (!value) {
+      setExistingHit(null)
+      return
+    }
+    startTransition(async () => {
+      const result = await findProductByCodeAction(shopId, value)
+      if (result.ok && result.data) {
+        setExistingHit(result.data)
+      } else {
+        setExistingHit(null)
+      }
+    })
+  }
+
+  function onBarcodeScan(code: string) {
+    setBarcode(code)
+    checkExistingBarcode(code)
+  }
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
+
+    if (existingHit) {
+      setError(
+        "This barcode already belongs to a product. Restock it instead of creating a duplicate."
+      )
+      return
+    }
 
     startTransition(async () => {
       const result = await createProductAction({
@@ -117,10 +170,10 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add product</CardTitle>
+        <CardTitle>New product</CardTitle>
         <CardDescription>
-          Prices use Indian Rupees ({RUPEE}). Scan a barcode or generate a SKU before
-          saving.
+          Prices use Indian Rupees (<RupeeMark />). Scan a manufacturer barcode
+          or generate a unique DigiShop code (DS00000001…).
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -160,7 +213,7 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
 
           <div className="space-y-2">
             <label htmlFor="product-price" className="text-sm font-medium">
-              Selling price ({RUPEE})
+              Selling price (<RupeeMark />)
             </label>
             <input
               id="product-price"
@@ -177,7 +230,7 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
 
           <div className="space-y-2">
             <label htmlFor="product-cost" className="text-sm font-medium">
-              Cost price ({RUPEE}){" "}
+              Cost price (<RupeeMark />){" "}
               <span className="text-muted-foreground">(optional)</span>
             </label>
             <input
@@ -270,19 +323,52 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="product-barcode" className="text-sm font-medium">
-              Barcode <span className="text-muted-foreground">(optional)</span>
-            </label>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <label htmlFor="product-barcode" className="text-sm font-medium">
+                Barcode <span className="text-muted-foreground">(optional)</span>
+              </label>
+              <button
+                type="button"
+                onClick={onGenerateBarcode}
+                disabled={pending}
+                className="text-xs font-medium text-primary underline underline-offset-2"
+              >
+                generate
+              </button>
+            </div>
             <div className="flex gap-2">
               <input
                 id="product-barcode"
                 value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
+                onChange={(e) => {
+                  setBarcode(e.target.value)
+                  setExistingHit(null)
+                }}
+                onBlur={() => checkExistingBarcode(barcode)}
                 className={fieldClass}
-                placeholder="Scan or type barcode"
+                placeholder="Scan, type, or generate"
               />
-              <BarcodeScannerButton onScan={setBarcode} />
+              <BarcodeScannerButton onScan={onBarcodeScan} />
             </div>
+            {existingHit && onSwitchToRestock ? (
+              <div
+                className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
+                role="status"
+              >
+                <p>
+                  Already in inventory:{" "}
+                  <span className="font-medium">{existingHit.name}</span>{" "}
+                  (stock {existingHit.quantity}).
+                </p>
+                <button
+                  type="button"
+                  className="mt-1 text-xs font-medium text-primary underline underline-offset-2"
+                  onClick={() => onSwitchToRestock(existingHit)}
+                >
+                  Restock instead
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-2 sm:col-span-2">
@@ -306,7 +392,7 @@ export function ProductForm({ shopId, categories = [] }: ProductFormProps) {
           ) : null}
 
           <div className="flex flex-wrap gap-2 sm:col-span-2">
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending || Boolean(existingHit)}>
               {pending ? "Adding…" : "Add product"}
             </Button>
             <Button

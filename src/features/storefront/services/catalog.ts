@@ -1,4 +1,5 @@
 import { listProductsByShopSlug } from "@/features/inventory/services/products"
+import { expireStaleCustomerOrders } from "@/features/orders/services/orders"
 import { listShopContacts } from "@/features/shop/services/contacts"
 import { getShopBySlug } from "@/features/shop/services/shop"
 import { AppError } from "@/shared/lib/errors"
@@ -8,6 +9,8 @@ export async function getPublicShopCatalog(slug: string) {
   if (!shop) {
     throw new AppError("Shop not found", "SHOP_NOT_FOUND", 404)
   }
+
+  await expireStaleCustomerOrders(shop.id)
 
   const [products, contacts] = await Promise.all([
     listProductsByShopSlug(slug),

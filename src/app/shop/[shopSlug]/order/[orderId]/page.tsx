@@ -9,6 +9,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  getOrderStatusDescription,
+  getOrderStatusHeadline,
+  getOrderStatusLabel,
+} from "@/features/orders/constants"
+import { OrderPickupQr } from "@/features/storefront/components/order-pickup-qr"
 import { getPublicOrderReceipt } from "@/features/storefront/services/checkout"
 import { formatInr } from "@/shared/lib/money"
 import { cn } from "@/lib/utils"
@@ -39,19 +45,35 @@ export default async function OrderConfirmationPage({ params }: PageProps) {
     <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-center px-4 py-12">
       <Card>
         <CardHeader>
-          <CardTitle>Order placed</CardTitle>
+          <CardTitle>{getOrderStatusHeadline(receipt.status)}</CardTitle>
           <CardDescription>
-            Show this at {receipt.shopName}. Pay at pickup.
+            {getOrderStatusDescription(receipt.status, receipt.shopName)}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {receipt.pickupCode ? (
+            <div className="space-y-3 rounded-lg border px-4 py-4 text-center">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Pickup code
+              </p>
+              <p className="font-numeric text-3xl font-bold tracking-[0.2em]">
+                {receipt.pickupCode}
+              </p>
+              <OrderPickupQr code={receipt.pickupCode} />
+              <p className="text-xs text-muted-foreground">
+                Show this code or QR at the counter
+              </p>
+            </div>
+          ) : null}
           <div className="rounded-lg bg-muted/60 px-4 py-3">
             <p className="text-xs text-muted-foreground">Order ID</p>
             <p className="font-mono text-sm break-all">{receipt.id}</p>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Status</span>
-            <span className="capitalize font-medium">{receipt.status}</span>
+            <span className="font-medium">
+              {getOrderStatusLabel(receipt.status)}
+            </span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Payment</span>

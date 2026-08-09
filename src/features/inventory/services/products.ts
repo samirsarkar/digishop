@@ -1,6 +1,7 @@
-import { and, asc, eq, gt, sql } from "drizzle-orm"
+import { and, asc, eq, gt, ilike, or, sql } from "drizzle-orm"
 
 import { assertShopAccess } from "@/features/shop/services/shop"
+import { formatShopBarcode } from "@/features/shop/constants"
 import { getDb } from "@/lib/db"
 import { inventory, products, shops, type Product } from "@/lib/db/schema"
 import { AppError } from "@/shared/lib/errors"
@@ -78,6 +79,19 @@ export async function listProductsPage(
   const filters = [eq(products.shopId, data.shopId)]
   if (data.category && data.category.trim() !== "") {
     filters.push(eq(products.category, data.category.trim()))
+  }
+  const q = data.q?.trim()
+  if (q) {
+    const pattern = `%${q}%`
+    filters.push(
+      or(
+        ilike(products.name, pattern),
+        ilike(products.sku, pattern),
+        ilike(products.barcode, pattern),
+        ilike(products.category, pattern),
+        ilike(products.description, pattern)
+      )!
+    )
   }
   if (data.cursor) {
     filters.push(gt(products.id, data.cursor))
@@ -164,6 +178,36 @@ export async function getProduct(
 
   await assertShopAccess(userId, row.product.shopId)
   return mapRow(row)
+}
+
+/** Lookup by barcode or SKU for POS scanning. */
+export async function findProductByCode(
+  userId: string,
+  shopId: string,
+  code: string
+): Promise<ProductWithStock | null> {
+  await assertShopAccess(userId, shopId)
+  const value = code.trim()
+  if (!value) return null
+
+  const db = getDb()
+  const [row] = await db
+    .select({
+      product: products,
+      quantity: inventory.quantity,
+      lowStockThreshold: inventory.lowStockThreshold,
+    })
+    .from(products)
+    .leftJoin(inventory, eq(inventory.productId, products.id))
+    .where(
+      and(
+        eq(products.shopId, shopId),
+        or(eq(products.barcode, value), eq(products.sku, value))
+      )
+    )
+    .limit(1)
+
+  return row ? mapRow(row) : null
 }
 
 export async function createProduct(
@@ -350,4 +394,46 @@ export async function adjustStock(
     lowStockThreshold:
       stock?.lowStockThreshold ?? existing.lowStockThreshold ?? 5,
   }
+}
+
+/**
+ * Atomically bump shops.barcode_seq and return a unique DigiShop barcode
+ * (DS00000001…). Retries if the code collides with a manually entered barcode.
+ */
+export async function allocateNextBarcode(
+  userId: string,
+  shopId: string
+): Promise<string> {
+  await assertShopAccess(userId, shopId)
+  const db = getDb()
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const [row] = await db
+      .update(shops)
+      .set({
+        barcodeSeq: sql`${shops.barcodeSeq} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(shops.id, shopId))
+      .returning({ barcodeSeq: shops.barcodeSeq })
+
+    if (!row) {
+      throw new AppError("Shop not found", "SHOP_NOT_FOUND", 404)
+    }
+
+    const code = formatShopBarcode(row.barcodeSeq)
+    const [clash] = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(and(eq(products.shopId, shopId), eq(products.barcode, code)))
+      .limit(1)
+
+    if (!clash) return code
+  }
+
+  throw new AppError(
+    "Could not allocate a unique barcode. Try again.",
+    "BARCODE_ALLOC_FAILED",
+    500
+  )
 }

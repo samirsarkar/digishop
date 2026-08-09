@@ -1,0 +1,23 @@
+---
+description: Correct Indian Rupee (₹) usage — prevent broken glyphs
+alwaysApply: true
+---
+
+# Indian Rupee (INR) — mandatory
+
+## Never
+
+- Paste a raw `₹` from the keyboard into JSX/strings without checking the code point
+- Put `₹` / `RUPEE` inside native `<option>` / `<select>` labels (macOS/system fonts often render a broken lookalike)
+- Use `Rs`, `INR`, or Intl `currencyDisplay: "symbol"` alone for UI amounts
+
+## Always
+
+1. Import `RUPEE` or `formatInr` from `@/shared/lib/money` (`RUPEE` is `\u20B9` only)
+2. For bare sign in UI: `<RupeeMark />` from `@/shared/components/rupee-mark` (applies `font-numeric`)
+3. For amounts: `formatInr(value)` inside an element with `className="font-numeric"`
+4. For charge-type / filters: use buttons or custom UI — not `<option>Fixed ₹</option>`
+
+## Font
+
+`font-numeric` → Roboto with `latin-ext` (see `src/app/layout.tsx`). Required for a correct ₹ glyph.

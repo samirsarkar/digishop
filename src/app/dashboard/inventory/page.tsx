@@ -8,7 +8,8 @@ import {
 import { requireUserId } from "@/features/auth/services/session"
 import { MerchantShell } from "@/features/shop/components/merchant-shell"
 import { SHOP_ROUTES } from "@/features/shop/constants"
-import { getShopForUser } from "@/features/shop/services/shop"
+import { loadMerchantShop } from "@/features/shop/services/shop"
+import { DbUnavailableView } from "@/shared/components/db-unavailable"
 
 export default async function InventoryPage() {
   const userId = await requireUserId()
@@ -17,15 +18,31 @@ export default async function InventoryPage() {
     redirect(SHOP_ROUTES.dashboard)
   }
 
-  const shop = await getShopForUser(userId)
-  if (!shop) {
+  const loaded = await loadMerchantShop(userId)
+  if (loaded.status === "db_unavailable") {
+    return <DbUnavailableView retryHref={SHOP_ROUTES.inventory} />
+  }
+  if (loaded.status === "no_shop") {
     redirect(SHOP_ROUTES.onboarding)
   }
 
-  const [page, categories] = await Promise.all([
-    listProductsPage(userId, { shopId: shop.id, limit: 30 }),
-    listProductCategories(userId, shop.id),
-  ])
+  const { shop } = loaded
+
+  let page
+  let categories
+  try {
+    ;[page, categories] = await Promise.all([
+      listProductsPage(userId, { shopId: shop.id, limit: 30 }),
+      listProductCategories(userId, shop.id),
+    ])
+  } catch {
+    return (
+      <DbUnavailableView
+        retryHref={SHOP_ROUTES.inventory}
+        shopName={shop.name}
+      />
+    )
+  }
 
   return (
     <MerchantShell shopName={shop.name}>

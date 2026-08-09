@@ -59,6 +59,7 @@ export const adjustStockSchema = z.object({
 export const listProductsPageSchema = z.object({
   shopId: z.string().uuid(),
   category: z.string().trim().max(80).optional().or(z.literal("")),
+  q: z.string().trim().max(120).optional().or(z.literal("")),
   cursor: z.string().uuid().optional().nullable(),
   limit: z.number().int().min(1).max(60).default(30),
 })

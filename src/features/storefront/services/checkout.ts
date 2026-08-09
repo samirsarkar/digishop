@@ -1,5 +1,11 @@
 import { and, eq, inArray, sql } from "drizzle-orm"
 
+import { ORDER_STATUS } from "@/features/orders/constants"
+import {
+  allocatePickupCode,
+  COD_HOLD_MINUTES,
+  expireStaleCustomerOrders,
+} from "@/features/orders/services/orders"
 import { getShopBySlug } from "@/features/shop/services/shop"
 import { getDb } from "@/lib/db"
 import {
@@ -63,7 +69,7 @@ async function decrementStock(
   }
 }
 
-/** Public customer checkout — pay at pickup (COD). Reserves stock. */
+/** Public customer checkout — pay at pickup (COD). Reserves stock until shop confirms or hold expires. */
 export async function createCustomerOrder(
   input: CreateCustomerOrderInput
 ): Promise<CustomerOrderReceipt> {
@@ -72,6 +78,8 @@ export async function createCustomerOrder(
   if (!shop) {
     throw new AppError("Shop not found", "SHOP_NOT_FOUND", 404)
   }
+
+  await expireStaleCustomerOrders(shop.id)
 
   const db = getDb()
   const productIds = data.items.map((item) => item.productId)
@@ -125,20 +133,28 @@ export async function createCustomerOrder(
     await decrementStock(shop.id, item.productId, item.quantity)
   }
 
+  const reservedUntil = new Date()
+  reservedUntil.setMinutes(reservedUntil.getMinutes() + COD_HOLD_MINUTES)
+
   const noteParts = [
     `Customer: ${data.customerName}`,
     `Phone: ${data.customerPhone}`,
     data.notes?.trim() ? data.notes.trim() : null,
   ].filter(Boolean)
 
+  const pickupCode = await allocatePickupCode(shop.id)
+
   const [order] = await db
     .insert(orders)
     .values({
       shopId: shop.id,
-      status: "confirmed",
+      pickupCode,
+      status: ORDER_STATUS.PENDING,
       totalAmount: toMoneyString(totalAmount),
       paymentMethod: "cod",
       notes: noteParts.join(" · "),
+      reservedUntil,
+      stockReleased: false,
     })
     .returning()
 
@@ -157,6 +173,18 @@ export async function createCustomerOrder(
       }))
     )
     .returning()
+
+  const { recordOrderEvent } = await import(
+    "@/features/orders/services/order-events"
+  )
+  const { ORDER_EVENT } = await import("@/features/orders/constants")
+  await recordOrderEvent({
+    orderId: order.id,
+    eventType: ORDER_EVENT.PLACED,
+    actorLabel: data.customerName,
+    toStatus: ORDER_STATUS.PENDING,
+    message: `Customer order · ${data.customerPhone}`,
+  })
 
   return {
     ...order,

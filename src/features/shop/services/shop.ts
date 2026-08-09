@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm"
 
-import { getDb } from "@/lib/db"
+import { getDb, withDbRetry } from "@/lib/db"
 import { shopContacts, shopMembers, shops, type Shop } from "@/lib/db/schema"
 import { AppError } from "@/shared/lib/errors"
 import {
@@ -17,6 +17,22 @@ function emptyToNull(value?: string | null) {
 }
 
 export async function getShopByOwner(ownerId: string): Promise<Shop | null> {
+  return withDbRetry(() => queryShopByOwner(ownerId))
+}
+
+export async function getShopBySlug(slug: string): Promise<Shop | null> {
+  return withDbRetry(async () => {
+    const db = getDb()
+    const [shop] = await db
+      .select()
+      .from(shops)
+      .where(eq(shops.slug, slug))
+      .limit(1)
+    return shop ?? null
+  })
+}
+
+async function queryShopByOwner(ownerId: string): Promise<Shop | null> {
   const db = getDb()
   const [shop] = await db
     .select()
@@ -26,29 +42,36 @@ export async function getShopByOwner(ownerId: string): Promise<Shop | null> {
   return shop ?? null
 }
 
-export async function getShopBySlug(slug: string): Promise<Shop | null> {
-  const db = getDb()
-  const [shop] = await db
-    .select()
-    .from(shops)
-    .where(eq(shops.slug, slug))
-    .limit(1)
-  return shop ?? null
+export async function getShopForUser(userId: string): Promise<Shop | null> {
+  return withDbRetry(async () => {
+    const owned = await queryShopByOwner(userId)
+    if (owned) return owned
+
+    const db = getDb()
+    const [membership] = await db
+      .select({ shop: shops })
+      .from(shopMembers)
+      .innerJoin(shops, eq(shopMembers.shopId, shops.id))
+      .where(eq(shopMembers.clerkId, userId))
+      .limit(1)
+
+    return membership?.shop ?? null
+  })
 }
 
-export async function getShopForUser(userId: string): Promise<Shop | null> {
-  const owned = await getShopByOwner(userId)
-  if (owned) return owned
-
-  const db = getDb()
-  const [membership] = await db
-    .select({ shop: shops })
-    .from(shopMembers)
-    .innerJoin(shops, eq(shopMembers.shopId, shops.id))
-    .where(eq(shopMembers.clerkId, userId))
-    .limit(1)
-
-  return membership?.shop ?? null
+/** Soft-load shop for dashboard pages — never throws on Neon cold-start. */
+export async function loadMerchantShop(userId: string): Promise<
+  | { status: "ok"; shop: Shop }
+  | { status: "no_shop" }
+  | { status: "db_unavailable" }
+> {
+  try {
+    const shop = await getShopForUser(userId)
+    if (!shop) return { status: "no_shop" }
+    return { status: "ok", shop }
+  } catch {
+    return { status: "db_unavailable" }
+  }
 }
 
 export async function requireShopForUser(userId: string): Promise<Shop> {
@@ -118,6 +141,11 @@ export async function createShop(
       }))
     )
   }
+
+  const { ensureDefaultChargeRules } = await import(
+    "@/features/shop/services/charges"
+  )
+  await ensureDefaultChargeRules(shop.id)
 
   return shop
 }
