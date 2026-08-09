@@ -41,22 +41,29 @@ export function DashboardOverview({
           <p className="mt-1 text-sm text-muted-foreground">
             {userLabel ? `Signed in as ${userLabel} · ` : null}
             Storefront{" "}
-            <code className="text-xs">/shop/{shopSlug}</code>
+            <Link
+              href={`/shop/${shopSlug}`}
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+              target="_blank"
+            >
+              /shop/{shopSlug}
+            </Link>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href={SHOP_ROUTES.addProduct}
+            href={`/shop/${shopSlug}`}
             className={cn(buttonVariants({ size: "default" }))}
+            target="_blank"
+          >
+            Open customer shop
+          </Link>
+          <Link
+            href={SHOP_ROUTES.addProduct}
+            className={cn(buttonVariants({ variant: "outline", size: "default" }))}
           >
             <Package className="size-4" />
             Add product
-          </Link>
-          <Link
-            href={SHOP_ROUTES.inventory}
-            className={cn(buttonVariants({ variant: "outline", size: "default" }))}
-          >
-            View products
           </Link>
         </div>
       </div>

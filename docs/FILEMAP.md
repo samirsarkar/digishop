@@ -2,7 +2,7 @@
 
 > **Purpose:** Single index for agents and humans. Consult this before searching the repo.  
 > **Rule:** Update this file in the same change whenever you add, move, rename, or delete source files.  
-> **Last updated:** 2026-07-15 (REST API routes + S3 image upload)
+> **Last updated:** 2026-07-18 (customer storefront)
 
 ---
 
@@ -90,6 +90,9 @@
 | `src/app/dashboard/inventory/new/page.tsx` | Add product form | `inventory`, `shop` |
 | `src/app/dashboard/inventory/barcodes/page.tsx` | Printable barcode labels | `inventory`, `shop` |
 | `src/app/api/shop/[slug]/products/route.ts` | Public catalog JSON | `features/storefront` |
+| `src/app/shop/[shopSlug]/page.tsx` | Public customer storefront | `features/storefront` |
+| `src/app/shop/[shopSlug]/checkout/page.tsx` | Customer checkout (COD / pickup) | `features/storefront` |
+| `src/app/shop/[shopSlug]/order/[orderId]/page.tsx` | Order confirmation | `features/storefront` |
 
 ### REST API routes (protected via Clerk middleware; thin, delegate to feature services)
 
@@ -116,8 +119,6 @@
 | `src/app/dashboard/pos/` | In-store POS UI |
 | `src/app/dashboard/orders/` | Order management UI |
 | `src/app/dashboard/analytics/` | Dedicated analytics / P&L UI (overview lives on dashboard) |
-| `src/app/shop/[shopSlug]/` | Public customer storefront page |
-| `src/app/shop/[shopSlug]/checkout/` | Customer checkout |
 
 ---
 
@@ -257,17 +258,30 @@ src/features/pos/
 
 ---
 
-## Feature: `storefront` ✅ (APIs)
+## Feature: `storefront` ✅
 
 ```
 src/features/storefront/
+├── components/
+│   ├── cart-provider.tsx
+│   ├── storefront-header.tsx
+│   ├── storefront-catalog.tsx
+│   └── checkout-form.tsx
 └── services/
-    └── catalog.ts
+    ├── catalog.ts
+    ├── checkout.ts
+    └── actions.ts
 ```
 
 | Path | Role |
 |------|------|
 | `services/catalog.ts` | Public shop + in-stock products payload |
+| `services/checkout.ts` | Customer COD order + public receipt |
+| `services/actions.ts` | `placeCustomerOrderAction`, receipt action |
+| `components/cart-provider.tsx` | LocalStorage cart per shop slug |
+| `components/storefront-catalog.tsx` | Customer product grid + add to cart |
+| `components/checkout-form.tsx` | Pickup details + place order |
+| `components/storefront-header.tsx` | Shop name + cart link |
 
 ---
 
@@ -367,4 +381,5 @@ src/features/analytics/
 | 2026-07-13 | Inventory UI + real dashboard analytics (7-day revenue, low stock, recent orders) |
 | 2026-07-13 | Fix Zod `.partial()` crash; always-visible auth CTAs; appLogger |
 | 2026-07-13 | Products grid, categories, infinite scroll, barcode scan/print, INR helper |
+| 2026-07-18 | Public customer storefront + COD checkout at `/shop/[slug]` |
 | 2026-07-15 | REST API routes (shops, contacts, products, stock, orders, pos, payments, analytics) + S3 presigned image upload (`features/uploads`, `/api/upload`, AWS env vars) |
