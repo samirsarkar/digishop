@@ -54,7 +54,7 @@ function toMoneyString(value: number) {
 async function decrementStock(
   shopId: string,
   productId: string,
-  quantity: number
+  quantity: number,
 ) {
   const db = getDb()
   const updated = await db
@@ -67,8 +67,8 @@ async function decrementStock(
       and(
         eq(inventory.shopId, shopId),
         eq(inventory.productId, productId),
-        sql`${inventory.quantity} >= ${quantity}`
-      )
+        sql`${inventory.quantity} >= ${quantity}`,
+      ),
     )
     .returning()
 
@@ -82,7 +82,7 @@ async function decrementStock(
     throw new AppError(
       `Insufficient stock for ${product?.name ?? "product"}`,
       "INSUFFICIENT_STOCK",
-      400
+      400,
     )
   }
 }
@@ -90,7 +90,7 @@ async function decrementStock(
 async function incrementStock(
   shopId: string,
   productId: string,
-  quantity: number
+  quantity: number,
 ) {
   const db = getDb()
   await db
@@ -100,7 +100,7 @@ async function incrementStock(
       updatedAt: new Date(),
     })
     .where(
-      and(eq(inventory.shopId, shopId), eq(inventory.productId, productId))
+      and(eq(inventory.shopId, shopId), eq(inventory.productId, productId)),
     )
 }
 
@@ -118,7 +118,7 @@ export async function allocatePickupCode(shopId: string): Promise<string> {
   throw new AppError(
     "Could not allocate pickup code",
     "PICKUP_CODE_FAILED",
-    500
+    500,
   )
 }
 
@@ -216,7 +216,7 @@ export async function expireStaleCustomerOrders(shopId?: string) {
 
 export async function listOrders(
   userId: string,
-  shopId: string
+  shopId: string,
 ): Promise<Order[]> {
   await assertShopAccess(userId, shopId)
   await expireStaleCustomerOrders(shopId)
@@ -230,7 +230,7 @@ export async function listOrders(
 
 export async function getOrder(
   userId: string,
-  orderId: string
+  orderId: string,
 ): Promise<OrderWithItems> {
   const db = getDb()
   const [order] = await db
@@ -255,7 +255,7 @@ export async function getOrder(
 
 export async function getOrderDetail(
   userId: string,
-  orderId: string
+  orderId: string,
 ): Promise<OrderDetail> {
   const db = getDb()
   const [order] = await db
@@ -301,8 +301,9 @@ export async function getOrderDetail(
 /** Lookup by pickup code (exact) or phone digits / notes substring. */
 export async function findShopOrders(
   userId: string,
-  input: FindOrderLookupInput
+  input: FindOrderLookupInput,
 ): Promise<Order[]> {
+  debugger
   const data = findOrderLookupSchema.parse(input)
   await assertShopAccess(userId, data.shopId)
   await expireStaleCustomerOrders(data.shopId)
@@ -332,9 +333,9 @@ export async function findShopOrders(
         or(
           ilike(orders.pickupCode, pattern),
           ilike(orders.notes, pattern),
-          ilike(orders.id, pattern)
-        )
-      )
+          ilike(orders.id, pattern),
+        ),
+      ),
     )
     .orderBy(desc(orders.createdAt))
     .limit(20)
@@ -342,14 +343,14 @@ export async function findShopOrders(
 
 export async function createOrder(
   userId: string,
-  input: CreateOrderInput
+  input: CreateOrderInput,
 ): Promise<OrderWithItems> {
   const data = createOrderSchema.parse(input)
   await assertShopAccess(userId, data.shopId)
 
   const totalAmount = data.items.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
-    0
+    0,
   )
 
   const shouldDecrement =
@@ -389,7 +390,7 @@ export async function createOrder(
         productId: item.productId,
         quantity: item.quantity,
         unitPrice: toMoneyString(item.unitPrice),
-      }))
+      })),
     )
     .returning()
 
@@ -417,7 +418,7 @@ export async function createOrder(
 export async function updateOrderStatus(
   userId: string,
   input: UpdateOrderStatusInput,
-  actorLabel = "Shop staff"
+  actorLabel = "Shop staff",
 ): Promise<Order> {
   const data = updateOrderStatusSchema.parse(input)
   const db = getDb()
@@ -441,7 +442,7 @@ export async function updateOrderStatus(
     throw new AppError(
       "Cancelled orders cannot be reopened",
       "ORDER_CANCELLED",
-      400
+      400,
     )
   }
 
@@ -452,7 +453,7 @@ export async function updateOrderStatus(
     throw new AppError(
       "Completed orders cannot be cancelled",
       "ORDER_COMPLETED",
-      400
+      400,
     )
   }
 

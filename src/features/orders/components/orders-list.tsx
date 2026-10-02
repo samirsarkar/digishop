@@ -40,7 +40,7 @@ export type OrderListRow = {
 }
 
 function statusVariant(
-  status: string
+  status: string,
 ): "default" | "secondary" | "destructive" | "outline" {
   if (status === ORDER_STATUS.PENDING) return "default"
   if (status === ORDER_STATUS.CANCELLED) return "destructive"
@@ -70,7 +70,11 @@ export function OrdersList({
 
   const orders = found ?? initialOrders
 
-  function setStatus(orderId: string, status: OrderStatus, e: React.MouseEvent) {
+  function setStatus(
+    orderId: string,
+    status: OrderStatus,
+    e: React.MouseEvent,
+  ) {
     e.stopPropagation()
     setError(null)
     startTransition(async () => {
@@ -97,6 +101,7 @@ export function OrdersList({
         setError(result.error.message)
         return
       }
+      debugger
       setFound(
         result.data.map((order) => ({
           id: order.id,
@@ -109,7 +114,7 @@ export function OrdersList({
             order.createdAt instanceof Date
               ? order.createdAt.toISOString()
               : String(order.createdAt),
-        }))
+        })),
       )
     })
   }
